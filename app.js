@@ -33,7 +33,7 @@ function evaluateNotice(notice, profile) {
   if (!cands.length) {
     return { status: "CHECK", reasons: [`공급유형 "${notice.공급유형}"은 자동판정 트랙과 매치되지 않음 — 공고문 직접 확인`], notes: [] };
   }
-  const evals = cands.map(t => ({ t, r: evaluateTrack(t, profile) }));
+  const evals = orderTracks(cands).map(t => ({ t, r: evaluateTrack(t, profile) }));
   const ok = evals.filter(x => x.r.status === "OK");
   const cond = evals.filter(x => x.r.status === "COND");
   if (ok.length) return { status: "OK", reasons: [`신청가능: ${ok.map(x => x.t.name.replace(/\s*\(.*?\)/g, "")).join(", ")}`], notes: cond.map(x => `조건부: ${x.t.name}`) };
@@ -217,6 +217,9 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
+const TARGET_ORDER = ["일반", "생애최초", "신혼", "청년", "다자녀", "노부모", "신생아"];
+const orderTracks = list => [...list].sort((x, y) => TARGET_ORDER.indexOf(x.target) - TARGET_ORDER.indexOf(y.target));
+const TRACKS_ORDERED = orderTracks(TRACKS);
 let currentRegion = "서울";
 let currentCat = "all";
 let lastNotices = [];
@@ -412,7 +415,7 @@ function detailHTML(models, n, p) {
 // --- 유형별 --------------------------------------------------------
 
 function renderTracks(p) {
-  const results = TRACKS.map(t => ({ t, r: evaluateTrack(t, p) }));
+  const results = TRACKS_ORDERED.map(t => ({ t, r: evaluateTrack(t, p) }));
   const c = { OK: 0, COND: 0, CHECK: 0, NO: 0 };
   results.forEach(x => c[x.r.status]++);
   $("#kpiOk").textContent = c.OK; $("#kpiCond").textContent = c.COND; $("#kpiNo").textContent = c.NO;
@@ -424,7 +427,7 @@ function renderTracks(p) {
   })).join("");
   bindCards(box);
 
-  const score = Math.round((c.OK + c.COND * .5) / TRACKS.length * 100);
+  const score = Math.round((c.OK + c.COND * .5) / TRACKS_ORDERED.length * 100);
   $("#matchScore").textContent = score;
   $("#scoreRing").style.background = `conic-gradient(#fff 0 ${score}%, rgba(255,255,255,.22) ${score}%)`;
   if (c.OK >= 5) { $("#heroTitle").innerHTML = "신청 가능성이<br>높습니다"; $("#heroSub").textContent = `9개 트랙 중 ${c.OK}개 신청가능. 공고 탭에서 단지별 판정을 확인하세요.`; }
@@ -445,7 +448,7 @@ function renderScenarios(base) {
   const sc = [["before", "① 혼인신고 전"], ["after", "② 혼인신고 후"], ["newborn", "③ 출산·임신 후"]];
   $("#scenarioScroll").innerHTML = sc.map(([k, label]) => {
     const p = applyScenario(base, k);
-    const rows = TRACKS.map(t => `<div class="scenario-row"><span>${t.name}</span><span class="dot ${evaluateTrack(t, p).status}"></span></div>`).join("");
+    const rows = TRACKS_ORDERED.map(t => `<div class="scenario-row"><span>${t.name}</span><span class="dot ${evaluateTrack(t, p).status}"></span></div>`).join("");
     return `<div class="scenario-col"><h3>${label}</h3>${rows}</div>`;
   }).join("");
 }
@@ -469,7 +472,7 @@ function renderRules(p) {
      </div>`;
   const marital = { single: "미혼", engaged: "예비신혼", married: "기혼" }[p.maritalStatus];
 
-  $("#rulesCards").innerHTML = TRACKS
+  $("#rulesCards").innerHTML = TRACKS_ORDERED
     .filter(t => currentRuleCat === "all" || t.target === currentRuleCat)
     .map(t => {
       const v = evaluateTrack(t, p);
