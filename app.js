@@ -18,6 +18,26 @@ const ICONS = {
 };
 const CHEVRON = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>';
 
+// --- 금액 입력 콤마 포맷팅 ---------------------------------------
+
+function parseAmount(str) {
+  const digits = String(str || "").replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+function formatAmount(num) {
+  return Number(num || 0).toLocaleString("ko-KR");
+}
+function setupAmountField(id) {
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => {
+    const raw = parseAmount(el.value);
+    el.value = raw ? formatAmount(raw) : "";
+  });
+  el.addEventListener("blur", () => {
+    if (el.value === "") el.value = "0";
+  });
+}
+
 // --- 판정 함수 ---------------------------------------------
 
 function evaluateTrack(track, p) {
@@ -156,9 +176,9 @@ function collectProfile() {
     region: getSegmentedValue("regionSeg"),
     householdSize: Number(document.getElementById("householdSize").value || 1),
     isDualIncome: document.getElementById("isDualIncome").checked,
-    monthlyIncome: Number(document.getElementById("monthlyIncome").value || 0) * 10000,
-    totalAsset: Number(document.getElementById("totalAsset").value || 0) * 10000,
-    vehicleAsset: Number(document.getElementById("vehicleAsset").value || 0) * 10000,
+    monthlyIncome: parseAmount(document.getElementById("monthlyIncome").value),
+    totalAsset: parseAmount(document.getElementById("totalAsset").value),
+    vehicleAsset: parseAmount(document.getElementById("vehicleAsset").value),
     isHomeless: document.getElementById("isHomeless").checked,
     hasSmallCheapHouse: document.getElementById("hasSmallCheapHouse").checked,
     spUsedCount: Number(document.getElementById("spUsedCount").value || 0),
@@ -290,9 +310,9 @@ function loadLocal() {
     setSegmentedValue("regionSeg", p.region || "서울");
     document.getElementById("householdSize").value = p.householdSize || 2;
     document.getElementById("isDualIncome").checked = !!p.isDualIncome;
-    document.getElementById("monthlyIncome").value = (p.monthlyIncome || 0) / 10000;
-    document.getElementById("totalAsset").value = (p.totalAsset || 0) / 10000;
-    document.getElementById("vehicleAsset").value = (p.vehicleAsset || 0) / 10000;
+    document.getElementById("monthlyIncome").value = formatAmount(p.monthlyIncome || 0);
+    document.getElementById("totalAsset").value = formatAmount(p.totalAsset || 0);
+    document.getElementById("vehicleAsset").value = formatAmount(p.vehicleAsset || 0);
     document.getElementById("isHomeless").checked = p.isHomeless !== false;
     document.getElementById("hasSmallCheapHouse").checked = !!p.hasSmallCheapHouse;
     document.getElementById("spUsedCount").value = p.spUsedCount || 0;
@@ -304,6 +324,9 @@ function loadLocal() {
 window.addEventListener("DOMContentLoaded", () => {
   setupSegmented("maritalSeg");
   setupSegmented("regionSeg");
+  setupAmountField("monthlyIncome");
+  setupAmountField("totalAsset");
+  setupAmountField("vehicleAsset");
   loadLocal();
   document.getElementById("runBtn").addEventListener("click", runAll);
   // 첫 카드는 기본적으로 펼쳐서 사용법을 보여줌
