@@ -102,6 +102,22 @@ code { background: var(--line2); padding: 1px 6px; border-radius: 5px; font-size
 .why.COND { color: var(--cond); }
 .why.CHECK { color: var(--check); font-weight: 500; }
 .why-ok { padding: 0 18px 13px; font-size: 13px; color: var(--ok); font-weight: 600; }
+
+/* 공고문 자동조회 블록 */
+.detail-slot { border-top: 1px solid var(--line2); padding: 10px 14px 12px 18px; background: #FAFBFC; }
+.detail-loading, .detail-err { font-size: 12px; color: var(--muted); padding: 4px 0; }
+.detail-err { color: var(--no); }
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 8px; flex-wrap: wrap; }
+.detail-head b { color: var(--p2); }
+.detail-head span { color: var(--muted); }
+.detail-head strong { color: var(--ink); font-size: 14px; }
+.mdl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mdl th { font-size: 11px; color: var(--muted); font-weight: 700; text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.mdl td { padding: 7px 6px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+.mdl tr:last-child td { border-bottom: none; }
+.mdl td.num { font-weight: 700; }
+.ok-mark { color: var(--ok); font-weight: 800; }
+.no-mark { color: var(--no); font-weight: 700; }
 .card-detail { max-height: 0; overflow: hidden; transition: max-height .25s ease; background: #FAFBFC; }
 .card.open .card-detail { max-height: 600px; border-top: 1px solid var(--line2); }
 .reason-list { margin: 0; padding: 12px 16px 12px 34px; font-size: 13px; color: var(--ink2); line-height: 1.55; }

@@ -337,11 +337,14 @@ function renderNotices(p) {
   $("#statCheck").textContent = counts.CHECK;
   $("#homeRegionLabel").textContent = currentRegion;
 
-  const html = items.map(({ n, v }) => card({
-    status: v.status, title: n.단지명, tags: [n.공급유형],
-    meta: [n.지역, `${n.공급규모}세대`, `접수 ${n.접수시작}~${n.접수종료}`],
-    reasons: v.reasons, notes: v.notes || [], link: n.공고URL
-  }));
+  const html = items.map(({ n, v }) => {
+    const no = n.주택관리번호 || n.공고번호;
+    return card({
+      status: v.status, title: n.단지명, tags: [n.공급유형],
+      meta: [n.지역, `${n.공급규모}세대`, `접수 ${n.접수시작}~${n.접수종료}`],
+      reasons: v.reasons, notes: v.notes || [], link: n.공고URL
+    }).replace('<div class="card-detail">', `<div class="detail-slot" data-no="${no}"><div class="detail-loading">공고문 자동조회 중…</div></div><div class="card-detail">`);
+  });
   const list = $("#noticesList"), home = $("#homeNotices");
   if (!items.length) {
     list.innerHTML = home.innerHTML = '<div class="empty">현재 이 지역에 신혼 관련 공고가 없습니다.</div>';
@@ -349,6 +352,56 @@ function renderNotices(p) {
   }
   list.innerHTML = html.join(""); bindCards(list);
   home.innerHTML = html.slice(0, 3).join(""); bindCards(home);
+  loadNoticeDetails(items, p);
+}
+
+
+// --- 공고 상세(주택형별 분양가·면적·신혼특공 세대) 자동 로드 -------------
+
+const detailCache = {};
+async function loadNoticeDetails(items, p) {
+  for (const { n } of items) {
+    const no = n.주택관리번호 || n.공고번호;
+    const slots = $$(`.detail-slot[data-no="${no}"]`);
+    if (!slots.length) continue;
+    try {
+      if (!detailCache[no]) {
+        const r = await fetch(`${API_BASE}/notice-detail?houseManageNo=${encodeURIComponent(no)}`);
+        if (!r.ok) throw new Error(r.status);
+        detailCache[no] = (await r.json()).models || [];
+      }
+      const html = detailHTML(detailCache[no], n, p);
+      slots.forEach(s => { s.innerHTML = html; });
+    } catch (e) {
+      slots.forEach(s => { s.innerHTML = '<div class="detail-err">공고 상세를 불러오지 못했습니다.</div>'; });
+    }
+  }
+}
+
+function detailHTML(models, n, p) {
+  if (!models.length) return '<div class="detail-err">주택형 정보 없음</div>';
+  const isSinhon = (n.공급유형 || "").includes("신혼희망타운");
+  const totalNw = models.reduce((s, m) => s + (isSinhon ? (m.특별공급합계 + m.일반공급) : m.신혼부부), 0);
+  const rows = models.map(m => {
+    const loanOk = m.분양최고가 <= YOUTH_DREAM_LOAN.maxSupplyPrice && m.공급면적 <= YOUTH_DREAM_LOAN.maxExclusiveArea;
+    const nw = isSinhon ? (m.특별공급합계 + m.일반공급) : m.신혼부부;
+    return `<tr>
+      <td>${m.주택형.replace(/^0+/, "").replace(/\.0+/, "")}</td>
+      <td>${m.공급면적.toFixed(1)}㎡</td>
+      <td class="num">₩${m.분양최고가.toLocaleString("ko-KR")}</td>
+      <td class="num">${nw}</td>
+      <td>${loanOk ? '<span class="ok-mark">가능</span>' : '<span class="no-mark">불가</span>'}</td>
+    </tr>`;
+  }).join("");
+  return `
+    <div class="detail-head">
+      <b>공고문 자동조회</b>
+      <span>${isSinhon ? "신혼희망타운 전체" : "신혼부부 특공"} <strong>${totalNw}</strong>세대 · 주택형 ${models.length}개</span>
+    </div>
+    <table class="mdl">
+      <thead><tr><th>주택형</th><th>면적</th><th>분양최고가</th><th>신혼</th><th>드림대출</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // --- 유형별 --------------------------------------------------------
@@ -509,6 +562,7 @@ function loadLocal() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  $("#appMeta").textContent = `${YEAR} 기준 · 업데이트 ${APP_UPDATED.replace(/-/g, ".")}`;
   ["maritalSeg", "regionSeg", "smallHouseTypeSeg"].forEach(setupSeg);
   ["monthlyIncome", "totalAsset", "vehicleAsset", "smallHousePrice", "interestedPrice"].forEach(setupAmountField);
 
