@@ -556,6 +556,7 @@ function runAll() {
   const p = collectProfile();
   renderTracks(p); renderRef(p); renderScenarios(p); renderNotices(p); renderRules(p);
   saveLocal(p);
+  syncUpload(p, true);
   showView("v-home");
 }
 const saveLocal = p => { try { localStorage.setItem("housingMatchProfile", JSON.stringify(p)); } catch (e) {} };
@@ -582,6 +583,41 @@ function loadLocal() {
   } catch (e) {}
 }
 
+function setupSelectOnFocus() {
+  $$('input[type="number"], input[inputmode="numeric"]').forEach(el => {
+    el.addEventListener("focus", () => { setTimeout(() => { try { el.select(); } catch (e) {} }, 0); });
+    el.addEventListener("mouseup", e => { if (el._justFocused) { e.preventDefault(); el._justFocused = false; } });
+    el.addEventListener("focusin", () => { el._justFocused = true; setTimeout(() => el._justFocused = false, 300); });
+  });
+}
+
+// --- PIN 동기화 ----------------------------------------------------
+
+const getPin = () => (localStorage.getItem("housingMatchPin") || "").trim();
+function setSyncStatus(txt, cls = "") { const s = $("#syncStatus"); s.textContent = txt; s.className = "sync-status " + cls; }
+async function syncUpload(profile, silent = false) {
+  const pin = getPin(); if (!pin) return;
+  try {
+    const r = await fetch(`${API_BASE}/sync/${encodeURIComponent(pin)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile, savedAt: new Date().toISOString() }) });
+    if (!r.ok) throw new Error(r.status);
+    setSyncStatus(`PIN ${pin} · 저장됨 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`, "on");
+  } catch (e) { if (!silent) setSyncStatus("서버 저장 실패", "err"); }
+}
+async function syncDownload() {
+  const pin = getPin(); if (!pin) { setSyncStatus("PIN을 먼저 입력하세요", "err"); return false; }
+  try {
+    const r = await fetch(`${API_BASE}/sync/${encodeURIComponent(pin)}`);
+    if (r.status === 404) { setSyncStatus(`PIN ${pin} · 서버에 저장된 조건 없음`, "err"); return false; }
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    const p = data.profile || data;
+    localStorage.setItem("housingMatchProfile", JSON.stringify(p));
+    loadLocal();
+    setSyncStatus(`PIN ${pin} · 불러옴 (${(data.savedAt || "").slice(0, 16).replace("T", " ")})`, "on");
+    return true;
+  } catch (e) { setSyncStatus("서버 조회 실패", "err"); return false; }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   $("#appMeta").textContent = `${YEAR} 기준 · 업데이트 ${APP_UPDATED.replace(/-/g, ".")}`;
   ["maritalSeg", "regionSeg", "smallHouseTypeSeg"].forEach(setupSeg);
@@ -592,6 +628,13 @@ window.addEventListener("DOMContentLoaded", () => {
   tog.addEventListener("change", sync);
 
   loadLocal(); sync();
+  setupSelectOnFocus();
+  $("#pinInput").value = getPin();
+  if (getPin()) setSyncStatus(`PIN ${getPin()} · 설정됨`, "on");
+  $("#pinInput").addEventListener("change", () => { localStorage.setItem("housingMatchPin", $("#pinInput").value.replace(/\D/g, "")); $("#pinInput").value = getPin(); setSyncStatus(getPin() ? `PIN ${getPin()} · 설정됨` : "미설정", getPin() ? "on" : ""); });
+  $("#pinUpload").addEventListener("click", () => { localStorage.setItem("housingMatchPin", $("#pinInput").value.replace(/\D/g, "")); const p = collectProfile(); saveLocal(p); syncUpload(p); });
+  $("#pinDownload").addEventListener("click", async () => { localStorage.setItem("housingMatchPin", $("#pinInput").value.replace(/\D/g, "")); if (await syncDownload()) { sync(); runAll(); } });
+  if (getPin()) syncDownload().then(ok => { if (ok) { sync(); const p = collectProfile(); renderTracks(p); renderRef(p); renderScenarios(p); renderRules(p); renderNotices(p); } });
   $$(".chip[data-region]").forEach(c => c.classList.toggle("on", c.dataset.region === currentRegion));
 
   $$(".tb").forEach(b => b.addEventListener("click", () => showView(b.dataset.view)));

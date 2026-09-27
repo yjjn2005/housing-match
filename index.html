@@ -60,6 +60,16 @@
       <button class="link-btn" id="resetBtn">초기화</button>
     </div>
 
+    <div class="sync-card">
+      <div class="sync-head"><b>기기 연동 (PIN)</b><span id="syncStatus" class="sync-status">미설정</span></div>
+      <div class="sync-row">
+        <input type="text" inputmode="numeric" id="pinInput" placeholder="PIN 4~8자리" maxlength="8" autocomplete="off">
+        <button class="btn-sm" id="pinUpload">올리기</button>
+        <button class="btn-sm outline" id="pinDownload">가져오기</button>
+      </div>
+      <p class="sync-help">같은 PIN을 다른 기기에 입력하면 조건이 동기화됩니다. 진단 실행 시 자동으로 서버에 저장됩니다.</p>
+    </div>
+
     <details class="acc" open>
       <summary><span class="acc-num">1</span>가구·혼인<span class="acc-chev"></span></summary>
       <div class="acc-body">
