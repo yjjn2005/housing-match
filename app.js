@@ -63,95 +63,80 @@ function setupAmountField(id) {
 // --- 판정 함수 ---------------------------------------------
 
 function evaluateTrack(track, p) {
-  const reasons = [];
+  const fails = [];   // 미충족 사유 (전부 수집)
+  const notes = [];   // 참고 사항
 
+  // 1) 혼인 상태·기간
   if (p.maritalStatus === "single") {
-    return { status: "NO", reasons: ["미혼 상태 — 미혼청년 특공만 해당, 이 트랙은 결혼 후 대상"] };
-  }
-  if (p.maritalStatus === "engaged") {
-    if (!track.allowEngaged) {
-      return { status: "NO", reasons: ["예비신혼부부는 이 트랙(민영 특공) 신청 불가"] };
-    }
-    reasons.push("예비신혼부부 — 혼인신고 완료 시 자격 확정(현재는 조건부)");
-  }
-  if (p.maritalStatus === "married") {
-    if (p.marriageYears > track.marriageYears) {
-      if (track.allowNewbornOver7y && p.hasChildUnder6) {
-        reasons.push("혼인 7년 초과이나 만 6세 이하 자녀 보유로 신혼 계층 자격 유지");
-      } else {
-        return { status: "NO", reasons: [`혼인기간 ${p.marriageYears}년 — 7년 초과로 신혼부부 자격 상실`] };
-      }
-    }
+    fails.push("미혼 — 신혼부부 트랙은 결혼(혼인신고) 후 대상");
+  } else if (p.maritalStatus === "engaged") {
+    if (!track.allowEngaged) fails.push("예비신혼부부는 이 트랙 신청 불가 (혼인신고 후 가능)");
+    else notes.push("예비신혼부부 — 혼인신고 완료 시 자격 확정");
+  } else if (p.marriageYears > track.marriageYears) {
+    if (track.allowNewbornOver7y && p.hasChildUnder6) notes.push("혼인 7년 초과이나 만 6세 이하 자녀 보유로 신혼 계층 유지");
+    else fails.push(`혼인기간 ${p.marriageYears}년 — 7년 초과로 신혼부부 자격 없음`);
   }
 
+  // 2) 지역 한정
   if (track.regionOnly && p.region !== track.regionOnly) {
-    return { status: "NO", reasons: [`${track.regionOnly} 거주자 한정 트랙`] };
+    fails.push(`${track.regionOnly} 거주자 한정 트랙 (현재 희망지역: ${p.region})`);
   }
 
+  // 3) 특별공급 생애 1회
   if (track.category === "분양" && p.spUsedCount >= 1) {
-    if (p.propertyDisposed && p.newbornWithin2y) {
-      reasons.push("EX-6: 기당첨 이력 있으나 무주택 전환+2년내 출산으로 1회 재신청 허용");
-    } else {
-      return { status: "NO", reasons: ["EX-1: 특별공급 생애 1회 원칙 — 기당첨 이력으로 신청 불가"] };
-    }
+    if (p.propertyDisposed && p.newbornWithin2y) notes.push("기당첨 이력 있으나 무주택 전환+2년 내 출산으로 1회 재신청 허용");
+    else fails.push(`과거 특별공급 당첨 ${p.spUsedCount}회 — 생애 1회 원칙 위반`);
   }
 
+  // 4) 무주택
   if (!p.isHomeless) {
     if (p.hasSmallCheapHouse) {
-      const exempt = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
-      if (exempt && track.smallCheapHouseException) {
-        reasons.push(`EX-8: 소형·저가주택 특례 충족(${p.smallHouseType === "nonApartment" ? "비아파트" : "아파트"}·${p.smallHouseArea}㎡·${fmt(p.smallHousePrice)}) — 민영주택 한정 무주택 인정`);
-      } else if (exempt && !track.smallCheapHouseException) {
-        return { status: "NO", reasons: ["공공 트랙은 소형·저가주택 보유자도 유주택자로 분류 — 신청 불가"] };
+      const ex = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
+      if (ex && track.smallCheapHouseException) {
+        notes.push(`소형·저가주택 특례 충족(${p.smallHouseType === "nonApartment" ? "비아파트" : "아파트"} ${p.smallHouseArea}㎡·${fmt(p.smallHousePrice)}) — 민영 한정 무주택 인정`);
+      } else if (ex) {
+        fails.push("공공 트랙은 소형·저가주택 보유자도 유주택자로 분류");
       } else {
-        return { status: "NO", reasons: ["보유주택이 소형·저가주택 특례 기준(면적·공시가)을 초과해 유주택자로 분류됨"] };
+        fails.push("보유주택이 소형·저가 특례 기준(면적·공시가) 초과 — 유주택자");
       }
     } else {
-      return { status: "NO", reasons: ["무주택 세대구성원 요건 미충족"] };
+      fails.push("무주택 세대구성원 요건 미충족 (주택 보유)");
     }
   }
 
+  // 5) 자산
   if (track.vehicleLimit && p.vehicleAsset > track.vehicleLimit) {
-    return { status: "NO", reasons: [`자동차가액 초과 (기준 ${fmt(track.vehicleLimit)} 이하)`] };
+    fails.push(`자동차가액 ${fmt(p.vehicleAsset)} > 기준 ${fmt(track.vehicleLimit)}`);
   }
-  let assetLimit = track.assetLimit;
-  if (assetLimit && p.totalAsset > assetLimit) {
-    return { status: "NO", reasons: [`총자산/부동산 기준 초과 (기준 ${fmt(assetLimit)} 이하)`] };
+  if (track.assetLimit && p.totalAsset > track.assetLimit) {
+    fails.push(`총자산 ${fmt(p.totalAsset)} > 기준 ${fmt(track.assetLimit)}`);
   }
 
-  const percentOptions = [
-    track.incomePriority, track.incomeSpousePriority,
-    track.incomeGeneral, track.incomeSpouseGeneral,
-    track.incomeLottery
-  ].filter(v => v != null);
-
-  if (percentOptions.length > 0) {
-    const applicablePercent = p.isDualIncome
+  // 6) 소득
+  const hasIncomeRule = [track.incomePriority, track.incomeSpousePriority, track.incomeGeneral, track.incomeSpouseGeneral, track.incomeLottery].some(v => v != null);
+  if (hasIncomeRule) {
+    const maxPct = p.isDualIncome
       ? Math.max(track.incomeSpousePriority || 0, track.incomeSpouseGeneral || 0, track.incomeLottery || 0)
       : Math.max(track.incomePriority || 0, track.incomeGeneral || 0);
-    const threshold = incomeThreshold(YEAR, p.householdSize, applicablePercent);
-    if (p.monthlyIncome > threshold) {
-      return { status: "NO", reasons: [`세대 월소득 ${fmt(p.monthlyIncome)} > 기준 ${fmt(threshold)} (${applicablePercent}%, ${p.isDualIncome ? "맞벌이" : "외벌이"})`] };
-    }
-    const priorityPercent = p.isDualIncome ? track.incomeSpousePriority : track.incomePriority;
-    if (priorityPercent) {
-      const pThreshold = incomeThreshold(YEAR, p.householdSize, priorityPercent);
-      if (p.monthlyIncome <= pThreshold) {
-        reasons.push(`우선공급 소득기준(${priorityPercent}%) 충족`);
-      } else {
-        reasons.push(`일반/추첨 구간 소득 — 우선공급 대상 아님`);
+    const th = incomeThreshold(YEAR, p.householdSize, maxPct);
+    if (p.monthlyIncome > th) {
+      fails.push(`월소득 ${fmt(p.monthlyIncome)} > 상한 ${fmt(th)} (${maxPct}%·${p.isDualIncome ? "맞벌이" : "외벌이"}·${p.householdSize}인)`);
+    } else {
+      const pPct = p.isDualIncome ? track.incomeSpousePriority : track.incomePriority;
+      if (pPct) {
+        const pth = incomeThreshold(YEAR, p.householdSize, pPct);
+        notes.push(p.monthlyIncome <= pth ? `우선공급 소득기준(${pPct}%) 충족` : "우선공급 초과 — 일반/추첨 구간");
       }
     }
   }
 
   if (track.category === "분양" && p.maritalStatus === "married") {
-    reasons.push("EX-7: 부부 중복청약 시 선접수 1건만 유효 처리됨(참고)");
+    notes.push("부부 중복청약 시 선접수 1건만 유효(참고)");
   }
 
-  if (p.maritalStatus === "engaged") {
-    return { status: "COND", reasons };
-  }
-  return { status: "OK", reasons };
+  if (fails.length) return { status: "NO", reasons: fails, notes };
+  if (p.maritalStatus === "engaged") return { status: "COND", reasons: notes, notes: [] };
+  return { status: "OK", reasons: notes, notes: [] };
 }
 
 function fmt(n) { return "₩" + Number(n).toLocaleString("ko-KR"); }
@@ -293,21 +278,29 @@ function collectProfile() {
 
 // --- 카드 ---------------------------------------------------------
 
-function card({ status, title, tags = [], meta = [], reasons = [], link = null }) {
+function card({ status, title, tags = [], meta = [], reasons = [], notes = [], link = null }) {
+  const m = STATUS_META[status];
+  // 불가/조건부/확인필요 사유는 카드 본문에 바로 노출
+  const why = (status === "NO" || status === "COND" || status === "CHECK") && reasons.length
+    ? `<ul class="why ${status}">${reasons.map(r => `<li>${r}</li>`).join("")}</ul>`
+    : (status === "OK" ? `<div class="why-ok">✓ 모든 필수조건 충족${reasons.length ? " · " + reasons[0] : ""}</div>` : "");
+  const extra = (status === "OK" ? reasons.slice(1) : []).concat(notes);
+  const hasDetail = extra.length || link;
   return `
   <div class="card status-${status}">
-    <div class="card-head">
+    <div class="card-head ${hasDetail ? "" : "no-detail"}">
       <div class="info">
         <div class="card-title">${title}</div>
-        <div class="card-meta">${tags.map(t => `<span class="tag">${t}</span>`).join("")}${meta.map(m => `<span>${m}</span>`).join("")}</div>
+        <div class="card-meta">${tags.map(t => `<span class="tag">${t}</span>`).join("")}${meta.map(x => `<span>${x}</span>`).join("")}</div>
       </div>
-      <span class="pill ${status}">${STATUS_META[status].label}</span>
-      ${CHEV}
+      <span class="pill ${status}">${m.label}</span>
+      ${hasDetail ? CHEV : ""}
     </div>
-    <div class="card-detail">
-      <ul class="reason-list">${reasons.map(r => `<li class="${status === "NO" ? "fail" : "pass"}">${r}</li>`).join("")}</ul>
+    ${why}
+    ${hasDetail ? `<div class="card-detail">
+      ${extra.length ? `<ul class="reason-list">${extra.map(r => `<li>${r}</li>`).join("")}</ul>` : ""}
       ${link ? `<div class="link-row"><a href="${link}" target="_blank" rel="noopener">공고 원문 보기 →</a></div>` : ""}
-    </div>
+    </div>` : ""}
   </div>`;
 }
 function bindCards(root) {
@@ -347,7 +340,7 @@ function renderNotices(p) {
   const html = items.map(({ n, v }) => card({
     status: v.status, title: n.단지명, tags: [n.공급유형],
     meta: [n.지역, `${n.공급규모}세대`, `접수 ${n.접수시작}~${n.접수종료}`],
-    reasons: v.reasons, link: n.공고URL
+    reasons: v.reasons, notes: v.notes || [], link: n.공고URL
   }));
   const list = $("#noticesList"), home = $("#homeNotices");
   if (!items.length) {
@@ -369,7 +362,7 @@ function renderTracks(p) {
   const box = $("#results");
   box.innerHTML = results.filter(x => currentCat === "all" || x.t.category === currentCat).map(x => card({
     status: x.r.status, title: x.t.name, tags: [x.t.category],
-    meta: x.t.regionOnly ? [`${x.t.regionOnly} 한정`] : [], reasons: x.r.reasons
+    meta: x.t.regionOnly ? [`${x.t.regionOnly} 한정`] : [], reasons: x.r.reasons, notes: x.r.notes || []
   })).join("");
   bindCards(box);
 
