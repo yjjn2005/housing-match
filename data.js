@@ -58,150 +58,102 @@ const YOUTH_DREAM_LOAN = {
 };
 
 // 트랙 정의: 각 트랙의 소득기준(percent), 자산기준, 혼인기간 요건, 무주택 요건 성격
-const TRACKS = [
-  {
-    id: "private_sf",
-    name: "민영 신혼부부 특별공급",
-    category: "분양",
-    marriageYears: 7,
-    allowEngaged: false,
-    allowNewbornOver7y: false,
-    incomePriority: 100, incomeSpousePriority: 120,
-    incomeGeneral: 140, incomeSpouseGeneral: 160,
-    incomeLottery: 200,
-    assetLimit: null, // 추첨제 자산기준 적용 시 부동산 3.31억(추첨 신청 시만 체크)
-    vehicleLimit: null,
-    smallCheapHouseException: true, // 무주택 특례 True 적용
-    publicHousing: false
-  },
-  {
-    id: "newhome_sf",
-    name: "뉴:홈(공공분양) 신혼부부 특별공급",
-    category: "분양",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 100, incomeSpousePriority: 120,
-    incomeGeneral: 140, incomeSpouseGeneral: 160,
-    incomeLottery: 200, // 나눔·선택형 맞벌이 최대
-    assetLimit: ASSET_LIMITS.newhomeProperty,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "sinhonhuimang",
-    name: "신혼희망타운",
-    category: "분양",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: null, incomeSpousePriority: null,
-    incomeGeneral: 130, incomeSpouseGeneral: 200,
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.sinhonhuimang,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "haengbok",
-    name: "행복주택 (신혼부부 계층)",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 100, incomeSpousePriority: 120,
-    incomeGeneral: null, incomeSpouseGeneral: null,
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.publicRentalDefault,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "maeip1",
-    name: "신혼·신생아 매입임대 Ⅰ형",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 70, incomeSpousePriority: 90,
-    incomeGeneral: null, incomeSpouseGeneral: null,
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.publicRentalDefault,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "maeip2",
-    name: "신혼·신생아 매입임대 Ⅱ형",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 100, incomeSpousePriority: 120,
-    incomeGeneral: 120, incomeSpouseGeneral: 140,
-    incomeLottery: 200, // 전세형 완화 시
-    assetLimit: ASSET_LIMITS.publicRentalDefault, // 5순위는 신희타 기준(3.62억) 별도 표기
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "jeonse1",
-    name: "신혼·신생아 전세임대 Ⅰ형",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 70, incomeSpousePriority: 90,
-    incomeGeneral: null, incomeSpouseGeneral: null,
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.publicRentalDefault,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "jeonse2",
-    name: "신혼·신생아 전세임대 Ⅱ형",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    incomePriority: 130, incomeSpousePriority: 200,
-    incomeGeneral: null, incomeSpouseGeneral: null,
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.sinhonhuimang,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  },
-  {
-    id: "mirinaejip",
-    name: "장기전세Ⅱ (서울시 미리내집)",
-    category: "임대",
-    marriageYears: 7,
-    allowEngaged: true,
-    allowNewbornOver7y: true,
-    regionOnly: "서울",
-    incomePriority: 120, incomeSpousePriority: 180, // 60㎡ 이하
-    incomeGeneral: 150, incomeSpouseGeneral: 200,    // 60㎡ 초과
-    incomeLottery: null,
-    assetLimit: ASSET_LIMITS.mirinaejip,
-    vehicleLimit: ASSET_LIMITS.vehicle,
-    smallCheapHouseException: false,
-    publicHousing: true
-  }
-];
+// 청년 트랙 자산·자동차 기준 (2026)
+const YOUTH_ASSET = { total: 289000000, vehicle: 37080000 };
 
-// 미혼청년 특공 (비교용 별도 트랙 — 신혼부부 전환 시 자동 폐쇄 대상)
-const YOUTH_TRACK = {
-  id: "youth_sf",
-  name: "미혼청년 특별공급",
-  category: "분양",
-  ageMin: 19, ageMax: 39,
-  incomeGeneral: 140 // 본인 소득만 산정
-};
+// ============================================================
+// 트랙 정의
+//  target: 신혼 | 청년 | 생애최초 | 다자녀 | 노부모 | 신생아 | 일반
+//  supplyKind: private(민영) | public(공공분양) | rental(임대)
+//  게이트 플래그: requireNewlywed, requireSingle, ageMin/ageMax, requireChildren(n),
+//                requireOldParent, requireLifeFirst, requireNewborn
+// ============================================================
+const T = (o) => Object.assign({
+  marriageYears: 7, allowEngaged: false, allowNewbornOver7y: false,
+  incomePriority: null, incomeSpousePriority: null, incomeGeneral: null, incomeSpouseGeneral: null, incomeLottery: null,
+  assetLimit: null, vehicleLimit: null, smallCheapHouseException: false, regionOnly: null,
+  requireNewlywed: false, requireSingle: false, ageMin: null, ageMax: null, requireChildren: 0,
+  requireOldParent: false, requireLifeFirst: false, requireNewborn: false, incomeSelfOnly: false, note: ""
+}, o);
+
+const TRACKS = [
+  // ---------- 신혼부부 ----------
+  T({ id: "private_sf", name: "민영 신혼부부 특별공급", category: "분양", supplyKind: "private", target: "신혼",
+      requireNewlywed: true, incomePriority: 100, incomeSpousePriority: 120, incomeGeneral: 140, incomeSpouseGeneral: 160, incomeLottery: 200,
+      smallCheapHouseException: true }),
+  T({ id: "newhome_sf", name: "뉴:홈(공공분양) 신혼부부 특별공급", category: "분양", supplyKind: "public", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 100, incomeSpousePriority: 120, incomeGeneral: 140, incomeSpouseGeneral: 160, incomeLottery: 200,
+      assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "sinhonhuimang", name: "신혼희망타운", category: "분양", supplyKind: "sinhon", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomeGeneral: 130, incomeSpouseGeneral: 200, assetLimit: ASSET_LIMITS.sinhonhuimang, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "haengbok", name: "행복주택 (신혼부부 계층)", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 100, incomeSpousePriority: 120, assetLimit: ASSET_LIMITS.publicRentalDefault, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "maeip1", name: "신혼·신생아 매입임대 Ⅰ형", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 70, incomeSpousePriority: 90, assetLimit: ASSET_LIMITS.publicRentalDefault, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "maeip2", name: "신혼·신생아 매입임대 Ⅱ형", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 100, incomeSpousePriority: 120, incomeGeneral: 120, incomeSpouseGeneral: 140, incomeLottery: 200,
+      assetLimit: ASSET_LIMITS.publicRentalDefault, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "jeonse1", name: "신혼·신생아 전세임대 Ⅰ형", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 70, incomeSpousePriority: 90, assetLimit: ASSET_LIMITS.publicRentalDefault, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "jeonse2", name: "신혼·신생아 전세임대 Ⅱ형", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true,
+      incomePriority: 130, incomeSpousePriority: 200, assetLimit: ASSET_LIMITS.sinhonhuimang, vehicleLimit: ASSET_LIMITS.vehicle }),
+  T({ id: "mirinaejip", name: "장기전세Ⅱ 미리내집 (서울)", category: "임대", supplyKind: "rental", target: "신혼",
+      requireNewlywed: true, allowEngaged: true, allowNewbornOver7y: true, regionOnly: "서울",
+      incomePriority: 120, incomeSpousePriority: 180, incomeGeneral: 150, incomeSpouseGeneral: 200,
+      assetLimit: ASSET_LIMITS.mirinaejip, vehicleLimit: ASSET_LIMITS.vehicle }),
+
+  // ---------- 청년 ----------
+  T({ id: "youth_sf", name: "뉴:홈 미혼청년 특별공급", category: "분양", supplyKind: "public", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, incomeSelfOnly: true,
+      incomeGeneral: 140, assetLimit: YOUTH_ASSET.total, vehicleLimit: ASSET_LIMITS.vehicle,
+      note: "본인 소득·자산 기준(부모 자산 상위 10% 제외)" }),
+  T({ id: "youth_ansim_pub", name: "청년안심주택 공공임대 (서울)", category: "임대", supplyKind: "rental", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, regionOnly: "서울", incomeSelfOnly: true,
+      incomePriority: 100, incomeGeneral: 120, assetLimit: YOUTH_ASSET.total, vehicleLimit: YOUTH_ASSET.vehicle }),
+  T({ id: "youth_ansim_priv", name: "청년안심주택 민간임대 특별공급 (서울)", category: "임대", supplyKind: "rental", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, regionOnly: "서울", incomeSelfOnly: true,
+      incomeGeneral: 120, assetLimit: YOUTH_ASSET.total, vehicleLimit: YOUTH_ASSET.vehicle }),
+  T({ id: "haengbok_youth", name: "행복주택 (청년 계층)", category: "임대", supplyKind: "rental", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, incomeSelfOnly: true,
+      incomePriority: 100, incomeGeneral: 120, assetLimit: YOUTH_ASSET.total, vehicleLimit: YOUTH_ASSET.vehicle,
+      note: "1인 가구 120% 완화 적용" }),
+  T({ id: "youth_maeip", name: "청년 매입임대", category: "임대", supplyKind: "rental", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, incomeSelfOnly: true,
+      incomeGeneral: 100, assetLimit: YOUTH_ASSET.total, vehicleLimit: YOUTH_ASSET.vehicle }),
+  T({ id: "youth_jeonse", name: "청년 전세임대", category: "임대", supplyKind: "rental", target: "청년",
+      requireSingle: true, ageMin: 19, ageMax: 39, incomeSelfOnly: true,
+      incomeGeneral: 100, assetLimit: YOUTH_ASSET.total, vehicleLimit: YOUTH_ASSET.vehicle }),
+
+  // ---------- 생애최초 ----------
+  T({ id: "lifefirst_priv", name: "민영 생애최초 특별공급", category: "분양", supplyKind: "private", target: "생애최초",
+      requireLifeFirst: true, incomePriority: 130, incomeSpousePriority: 160, incomeLottery: 200, smallCheapHouseException: true,
+      note: "주택 소유 이력 없음 · 5년 이상 소득세 납부 · 추첨제 자산 3.31억" }),
+  T({ id: "lifefirst_pub", name: "뉴:홈 생애최초 특별공급", category: "분양", supplyKind: "public", target: "생애최초",
+      requireLifeFirst: true, incomePriority: 100, incomeSpousePriority: 120, incomeGeneral: 130, incomeSpouseGeneral: 160,
+      assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle }),
+
+  // ---------- 다자녀 / 노부모 / 신생아 ----------
+  T({ id: "multichild_pub", name: "뉴:홈 다자녀 특별공급", category: "분양", supplyKind: "public", target: "다자녀",
+      requireChildren: 2, incomePriority: 120, incomeSpousePriority: 140,
+      assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle, note: "미성년 자녀 2명 이상(2024 개정)" }),
+  T({ id: "oldparent_pub", name: "뉴:홈 노부모부양 특별공급", category: "분양", supplyKind: "public", target: "노부모",
+      requireOldParent: true, incomePriority: 120, incomeSpousePriority: 200,
+      assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle, note: "65세 이상 직계존속 3년 이상 계속 부양·세대주" }),
+  T({ id: "newborn_pub", name: "뉴:홈 신생아 특별공급", category: "분양", supplyKind: "public", target: "신생아",
+      requireNewborn: true, incomePriority: 140, incomeSpousePriority: 200,
+      assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle, note: "공고일 기준 2년 이내 출생 자녀" }),
+
+  // ---------- 일반공급 ----------
+  T({ id: "general_pub", name: "공공분양 일반공급 (60㎡ 이하)", category: "분양", supplyKind: "public", target: "일반",
+      incomePriority: 100, incomeSpousePriority: 200, assetLimit: ASSET_LIMITS.newhomeProperty, vehicleLimit: ASSET_LIMITS.vehicle,
+      note: "청약저축 납입 인정회차·저축총액 순" }),
+  T({ id: "general_priv", name: "민영주택 일반공급 (가점·추첨)", category: "분양", supplyKind: "private", target: "일반",
+      smallCheapHouseException: true, note: "소득·자산 제한 없음 · 청약통장 예치금·가점(84점) 적용" })
+];

@@ -22,9 +22,9 @@
   <section class="view active" id="v-home">
     <div class="hero">
       <div class="hero-text">
-        <p class="hero-kicker">신혼부부 · 예비신혼 · 출산가구</p>
+        <p class="hero-kicker">신혼부부 · 청년 · 생애최초 · 다자녀 · 노부모 · 신생아 · 일반</p>
         <h1 id="heroTitle">조건을 입력하고<br>진단을 시작하세요</h1>
-        <p id="heroSub" class="hero-sub">9개 주택 트랙과 서울·경기 최신 공고를 내 조건으로 판정합니다.</p>
+        <p id="heroSub" class="hero-sub">분양·임대 22개 트랙과 서울·경기 최신 공고를 내 조건으로 판정합니다.</p>
       </div>
       <div class="ring-wrap">
         <div class="ring" id="scoreRing"><div class="ring-inner"><strong id="matchScore">0</strong><span>적합도</span></div></div>
@@ -48,7 +48,7 @@
     </div>
     <div class="quick-grid">
       <button class="quick" data-goto="v-profile"><span class="q-ico">✎</span><b>내 조건</b><small>입력·수정</small></button>
-      <button class="quick" data-goto="v-tracks"><span class="q-ico">▦</span><b>유형별 판정</b><small>9개 트랙</small></button>
+      <button class="quick" data-goto="v-tracks"><span class="q-ico">▦</span><b>유형별 판정</b><small>22개 트랙</small></button>
       <button class="quick" data-goto="v-rules"><span class="q-ico">☰</span><b>청약 조건</b><small>기준 vs 내 조건</small></button>
     </div>
   </section>
@@ -86,8 +86,12 @@
             </div>
           </div>
         </div>
+        <div class="row2">
+          <div class="fld"><label class="fld-label">미성년 자녀 수 <em>명</em></label><input type="number" id="childCount" value="0" min="0" max="10"></div>
+        </div>
         <label class="sw"><span>만 6세 이하 자녀 있음</span><input type="checkbox" id="hasChildUnder6"><i></i></label>
-        <label class="sw"><span>2년 내 출산</span><input type="checkbox" id="newbornWithin2y"><i></i></label>
+        <label class="sw"><span>2년 내 출산 <small>신생아 특공</small></span><input type="checkbox" id="newbornWithin2y"><i></i></label>
+        <label class="sw"><span>65세 이상 직계존속 3년 이상 부양 <small>노부모 특공</small></span><input type="checkbox" id="oldParentSupport"><i></i></label>
       </div>
     </details>
 
@@ -124,6 +128,8 @@
           <label class="sw"><span>수도권 소재</span><input type="checkbox" id="smallHouseMetro" checked><i></i></label>
         </div>
         <label class="sw"><span>보유주택 처분 완료</span><input type="checkbox" id="propertyDisposed"><i></i></label>
+        <label class="sw"><span>세대원 전원 주택 소유 이력 없음 <small>생애최초 특공</small></span><input type="checkbox" id="noHouseHistory" checked><i></i></label>
+        <label class="sw"><span>5년 이상 소득세 납부 <small>생애최초 특공</small></span><input type="checkbox" id="taxYears5"><i></i></label>
       </div>
     </details>
 
@@ -153,7 +159,8 @@
     <div class="chip-row">
       <button class="chip on" data-region="서울">서울</button>
       <button class="chip" data-region="경기">경기</button>
-      <span class="chip-note">청약홈 실시간</span>
+      <button class="chip chip-alt on" data-nw="0">전체 공고</button>
+      <button class="chip chip-alt" data-nw="1">신혼만</button>
     </div>
     <div class="kpi-row compact">
       <div class="kpi ok"><strong id="statOk">0</strong><span>신청가능</span></div>
@@ -167,10 +174,15 @@
   <!-- ================= 유형별 ================= -->
   <section class="view" id="v-tracks">
     <div class="page-head"><h1>유형별 판정</h1></div>
-    <div class="chip-row">
+    <div class="chip-row scroll">
       <button class="chip on" data-cat="all">전체</button>
-      <button class="chip" data-cat="분양">분양</button>
-      <button class="chip" data-cat="임대">임대</button>
+      <button class="chip" data-cat="신혼">신혼</button>
+      <button class="chip" data-cat="청년">청년</button>
+      <button class="chip" data-cat="생애최초">생애최초</button>
+      <button class="chip" data-cat="다자녀">다자녀</button>
+      <button class="chip" data-cat="노부모">노부모</button>
+      <button class="chip" data-cat="신생아">신생아</button>
+      <button class="chip" data-cat="일반">일반</button>
     </div>
     <div id="results" class="card-list"></div>
 
@@ -189,10 +201,15 @@
     <div class="page-head"><h1>청약 조건</h1></div>
     <p class="page-sub">트랙별 기준값 옆에 <b>내 조건</b>을 나란히 표시합니다. 가구원 수 기준으로 소득 상한을 실제 금액으로 환산했습니다.</p>
 
-    <div class="chip-row">
+    <div class="chip-row scroll">
       <button class="chip on" data-rcat="all">전체</button>
-      <button class="chip" data-rcat="분양">분양</button>
-      <button class="chip" data-rcat="임대">임대</button>
+      <button class="chip" data-rcat="신혼">신혼</button>
+      <button class="chip" data-rcat="청년">청년</button>
+      <button class="chip" data-rcat="생애최초">생애최초</button>
+      <button class="chip" data-rcat="다자녀">다자녀</button>
+      <button class="chip" data-rcat="노부모">노부모</button>
+      <button class="chip" data-rcat="신생아">신생아</button>
+      <button class="chip" data-rcat="일반">일반</button>
     </div>
     <div class="legend-inline"><span class="mk ok">✓</span>충족 <span class="mk no">✗</span>미충족 <span class="mk na">–</span>해당없음</div>
 
@@ -205,7 +222,9 @@
       <div class="principle"><b>무주택·자산</b>세대원 전원 무주택. 소형·저가주택 특례는 민영 한정(아파트 60㎡·비아파트 85㎡). 자동차 4,542만원, 트랙별 총자산 상한.</div>
       <div class="principle"><b>특공 1회</b>생애 1회 원칙. 기당첨 후 무주택 전환+2년 내 출산 시 1회 재개방. 부부 중복청약은 선접수 1건만 유효.</div>
       <div class="principle"><b>통장·대출</b>민영 일반공급 가점 = 본인 + 배우자 50% 가산(최대 3점, 17점 상한). 청년 주택드림 대출은 39세·연소득·분양가 6억·85㎡.</div>
-      <div class="principle"><b>지역 한정</b>미리내집(장기전세Ⅱ)은 서울 거주자 한정.</div>
+      <div class="principle"><b>청년</b>만 19~39세 미혼(혼인 중 아님)·무주택. 본인 소득 100~140%(1인 가구 완화), 총자산 2.89억·자동차 3,708만원(임대). 미혼청년 특공은 부모 순자산 상위 10% 제외.</div>
+      <div class="principle"><b>생애최초·다자녀·노부모·신생아</b>생애최초: 주택 소유 이력 없음+5년 소득세. 다자녀: 미성년 2명 이상. 노부모: 65세↑ 3년 부양·세대주. 신생아: 2년 내 출생.</div>
+      <div class="principle"><b>지역 한정</b>미리내집(장기전세Ⅱ)·청년안심주택은 서울 한정.</div>
     </div>
   </section>
 

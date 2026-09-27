@@ -20,24 +20,27 @@ const CHEVRON = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="cu
 
 // --- 공고 공급유형 → 자격판정 트랙 매핑 ---------------------------
 
-function mapNoticeToTrackId(houseSecdNm) {
-  if (!houseSecdNm) return null;
-  if (houseSecdNm.includes("신혼희망타운")) return "sinhonhuimang";
-  if (houseSecdNm.includes("국민")) return "newhome_sf";
-  if (houseSecdNm.includes("민영")) return "private_sf";
-  return null;
+function noticeCandidates(houseSecdNm) {
+  const t = houseSecdNm || "";
+  if (t.includes("신혼희망타운")) return TRACKS.filter(x => x.supplyKind === "sinhon");
+  if (t.includes("민영")) return TRACKS.filter(x => x.supplyKind === "private");
+  if (t.includes("국민") || t.includes("공공")) return TRACKS.filter(x => x.supplyKind === "public");
+  return [];
 }
 
 function evaluateNotice(notice, profile) {
-  const trackId = mapNoticeToTrackId(notice.공급유형);
-  const track = trackId ? TRACKS.find(t => t.id === trackId) : null;
-  if (!track) {
-    return {
-      status: "CHECK",
-      reasons: [`공급유형 "${notice.공급유형}"은 자동판정 트랙과 매치되지 않습니다 — 공고문에서 신혼부부 특공 물량·조건을 직접 확인하세요.`]
-    };
+  const cands = noticeCandidates(notice.공급유형);
+  if (!cands.length) {
+    return { status: "CHECK", reasons: [`공급유형 "${notice.공급유형}"은 자동판정 트랙과 매치되지 않음 — 공고문 직접 확인`], notes: [] };
   }
-  return evaluateTrack(track, profile);
+  const evals = cands.map(t => ({ t, r: evaluateTrack(t, profile) }));
+  const ok = evals.filter(x => x.r.status === "OK");
+  const cond = evals.filter(x => x.r.status === "COND");
+  if (ok.length) return { status: "OK", reasons: [`신청가능: ${ok.map(x => x.t.name.replace(/\s*\(.*?\)/g, "")).join(", ")}`], notes: cond.map(x => `조건부: ${x.t.name}`) };
+  if (cond.length) return { status: "COND", reasons: cond.map(x => `${x.t.name}: ${x.r.reasons[0] || "조건부"}`), notes: [] };
+  // 전부 불가 — 트랙별 첫 사유 요약 (가장 적은 사유 순)
+  const sorted = evals.sort((a, b) => a.r.reasons.length - b.r.reasons.length);
+  return { status: "NO", reasons: sorted.slice(0, 3).map(x => `${x.t.name.replace(/\s*\(.*?\)/g, "")}: ${x.r.reasons[0]}`), notes: sorted.slice(3).map(x => `${x.t.name}: ${x.r.reasons[0]}`) };
 }
 
 // --- 금액 입력 콤마 포맷팅 ---------------------------------------
@@ -63,80 +66,77 @@ function setupAmountField(id) {
 // --- 판정 함수 ---------------------------------------------
 
 function evaluateTrack(track, p) {
-  const fails = [];   // 미충족 사유 (전부 수집)
-  const notes = [];   // 참고 사항
+  const fails = [], notes = [];
+  const marital = { single: "미혼", engaged: "예비신혼", married: "기혼" }[p.maritalStatus];
 
-  // 1) 혼인 상태·기간
-  if (p.maritalStatus === "single") {
-    fails.push("미혼 — 신혼부부 트랙은 결혼(혼인신고) 후 대상");
-  } else if (p.maritalStatus === "engaged") {
-    if (!track.allowEngaged) fails.push("예비신혼부부는 이 트랙 신청 불가 (혼인신고 후 가능)");
-    else notes.push("예비신혼부부 — 혼인신고 완료 시 자격 확정");
-  } else if (p.marriageYears > track.marriageYears) {
-    if (track.allowNewbornOver7y && p.hasChildUnder6) notes.push("혼인 7년 초과이나 만 6세 이하 자녀 보유로 신혼 계층 유지");
-    else fails.push(`혼인기간 ${p.marriageYears}년 — 7년 초과로 신혼부부 자격 없음`);
+  // 대상별 게이트 --------------------------------------------------
+  if (track.requireNewlywed) {
+    if (p.maritalStatus === "single") fails.push("미혼 — 신혼부부 트랙은 혼인신고 후 대상");
+    else if (p.maritalStatus === "engaged") {
+      if (!track.allowEngaged) fails.push("예비신혼부부는 이 트랙 신청 불가 (혼인신고 후 가능)");
+      else notes.push("예비신혼부부 — 혼인신고 완료 시 자격 확정");
+    } else if (p.marriageYears > track.marriageYears) {
+      if (track.allowNewbornOver7y && p.hasChildUnder6) notes.push("혼인 7년 초과이나 만 6세 이하 자녀로 신혼 계층 유지");
+      else fails.push(`혼인기간 ${p.marriageYears}년 — 7년 초과`);
+    }
   }
-
-  // 2) 지역 한정
-  if (track.regionOnly && p.region !== track.regionOnly) {
-    fails.push(`${track.regionOnly} 거주자 한정 트랙 (현재 희망지역: ${p.region})`);
+  if (track.requireSingle && p.maritalStatus !== "single") fails.push(`${marital} — 청년 트랙은 미혼(혼인 중 아님)만 가능`);
+  if (track.ageMin != null && (p.age < track.ageMin || p.age > track.ageMax)) fails.push(`만 ${p.age}세 — 대상 연령 ${track.ageMin}~${track.ageMax}세 벗어남`);
+  if (track.requireChildren && p.childCount < track.requireChildren) fails.push(`미성년 자녀 ${p.childCount}명 — ${track.requireChildren}명 이상 필요`);
+  if (track.requireOldParent && !p.oldParentSupport) fails.push("65세 이상 직계존속 3년 이상 부양 요건 미충족");
+  if (track.requireNewborn && !p.newbornWithin2y) fails.push("2년 이내 출생 자녀 없음");
+  if (track.requireLifeFirst) {
+    if (!p.noHouseHistory) fails.push("세대원 주택 소유 이력 있음 — 생애최초 불가");
+    if (!p.taxYears5) fails.push("5년 이상 소득세 납부 요건 미충족");
+    if (p.maritalStatus === "single" && p.childCount === 0 && track.supplyKind === "public") fails.push("공공 생애최초는 혼인 중이거나 자녀가 있어야 함");
   }
+  if (track.regionOnly && p.region !== track.regionOnly) fails.push(`${track.regionOnly} 한정 (희망지역: ${p.region})`);
 
-  // 3) 특별공급 생애 1회
-  if (track.category === "분양" && p.spUsedCount >= 1) {
+  // 특별공급 1회 ---------------------------------------------------
+  if (track.category === "분양" && track.target !== "일반" && p.spUsedCount >= 1) {
     if (p.propertyDisposed && p.newbornWithin2y) notes.push("기당첨 이력 있으나 무주택 전환+2년 내 출산으로 1회 재신청 허용");
-    else fails.push(`과거 특별공급 당첨 ${p.spUsedCount}회 — 생애 1회 원칙 위반`);
+    else fails.push(`과거 특별공급 당첨 ${p.spUsedCount}회 — 생애 1회 원칙`);
   }
 
-  // 4) 무주택
+  // 무주택 --------------------------------------------------------
   if (!p.isHomeless) {
     if (p.hasSmallCheapHouse) {
       const ex = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
-      if (ex && track.smallCheapHouseException) {
-        notes.push(`소형·저가주택 특례 충족(${p.smallHouseType === "nonApartment" ? "비아파트" : "아파트"} ${p.smallHouseArea}㎡·${fmt(p.smallHousePrice)}) — 민영 한정 무주택 인정`);
-      } else if (ex) {
-        fails.push("공공 트랙은 소형·저가주택 보유자도 유주택자로 분류");
-      } else {
-        fails.push("보유주택이 소형·저가 특례 기준(면적·공시가) 초과 — 유주택자");
-      }
-    } else {
-      fails.push("무주택 세대구성원 요건 미충족 (주택 보유)");
-    }
+      if (ex && track.smallCheapHouseException) notes.push(`소형·저가주택 특례 충족 — 민영 한정 무주택 인정`);
+      else if (ex) fails.push("공공 트랙은 소형·저가주택 보유자도 유주택자로 분류");
+      else fails.push("보유주택이 소형·저가 특례 기준 초과 — 유주택자");
+    } else if (track.id === "general_priv") {
+      notes.push("유주택자 — 민영 일반공급은 1주택 처분조건 추첨 가능 (가점제 불가)");
+    } else fails.push("무주택 세대구성원 요건 미충족");
   }
 
-  // 5) 자산
-  if (track.vehicleLimit && p.vehicleAsset > track.vehicleLimit) {
-    fails.push(`자동차가액 ${fmt(p.vehicleAsset)} > 기준 ${fmt(track.vehicleLimit)}`);
-  }
-  if (track.assetLimit && p.totalAsset > track.assetLimit) {
-    fails.push(`총자산 ${fmt(p.totalAsset)} > 기준 ${fmt(track.assetLimit)}`);
-  }
+  // 자산 ----------------------------------------------------------
+  if (track.vehicleLimit && p.vehicleAsset > track.vehicleLimit) fails.push(`자동차가액 ${fmt(p.vehicleAsset)} > 기준 ${fmt(track.vehicleLimit)}`);
+  if (track.assetLimit && p.totalAsset > track.assetLimit) fails.push(`총자산 ${fmt(p.totalAsset)} > 기준 ${fmt(track.assetLimit)}`);
 
-  // 6) 소득
-  const hasIncomeRule = [track.incomePriority, track.incomeSpousePriority, track.incomeGeneral, track.incomeSpouseGeneral, track.incomeLottery].some(v => v != null);
-  if (hasIncomeRule) {
-    const maxPct = p.isDualIncome
+  // 소득 ----------------------------------------------------------
+  const hasIncome = [track.incomePriority, track.incomeSpousePriority, track.incomeGeneral, track.incomeSpouseGeneral, track.incomeLottery].some(v => v != null);
+  if (hasIncome) {
+    const dual = track.incomeSelfOnly ? false : p.isDualIncome;
+    const hh = track.incomeSelfOnly ? 1 : p.householdSize;
+    const maxPct = dual
       ? Math.max(track.incomeSpousePriority || 0, track.incomeSpouseGeneral || 0, track.incomeLottery || 0)
-      : Math.max(track.incomePriority || 0, track.incomeGeneral || 0);
-    const th = incomeThreshold(YEAR, p.householdSize, maxPct);
-    if (p.monthlyIncome > th) {
-      fails.push(`월소득 ${fmt(p.monthlyIncome)} > 상한 ${fmt(th)} (${maxPct}%·${p.isDualIncome ? "맞벌이" : "외벌이"}·${p.householdSize}인)`);
-    } else {
-      const pPct = p.isDualIncome ? track.incomeSpousePriority : track.incomePriority;
-      if (pPct) {
-        const pth = incomeThreshold(YEAR, p.householdSize, pPct);
-        notes.push(p.monthlyIncome <= pth ? `우선공급 소득기준(${pPct}%) 충족` : "우선공급 초과 — 일반/추첨 구간");
-      }
+      : Math.max(track.incomePriority || 0, track.incomeGeneral || 0, track.incomeLottery || 0);
+    const th = incomeThreshold(YEAR, hh, maxPct);
+    const label = track.incomeSelfOnly ? "본인·1인" : `${dual ? "맞벌이" : "외벌이"}·${hh}인`;
+    if (p.monthlyIncome > th) fails.push(`월소득 ${fmt(p.monthlyIncome)} > 상한 ${fmt(th)} (${maxPct}%·${label})`);
+    else {
+      const pPct = dual ? track.incomeSpousePriority : track.incomePriority;
+      if (pPct) notes.push(p.monthlyIncome <= incomeThreshold(YEAR, hh, pPct) ? `우선공급 소득기준(${pPct}%) 충족` : "우선공급 초과 — 일반/추첨 구간");
     }
   }
 
-  if (track.category === "분양" && p.maritalStatus === "married") {
-    notes.push("부부 중복청약 시 선접수 1건만 유효(참고)");
-  }
+  if (track.category === "분양" && p.maritalStatus === "married" && track.target !== "일반") notes.push("부부 중복청약 시 선접수 1건만 유효(참고)");
+  if (track.note) notes.push(track.note);
 
   if (fails.length) return { status: "NO", reasons: fails, notes };
-  if (p.maritalStatus === "engaged") return { status: "COND", reasons: notes, notes: [] };
-  return { status: "OK", reasons: notes, notes: [] };
+  if (p.maritalStatus === "engaged" && track.requireNewlywed) return { status: "COND", reasons: notes.filter(n => n.includes("예비신혼")), notes: notes.filter(n => !n.includes("예비신혼")) };
+  return { status: "OK", reasons: notes.slice(0, 1), notes: notes.slice(1) };
 }
 
 function fmt(n) { return "₩" + Number(n).toLocaleString("ko-KR"); }
@@ -220,6 +220,7 @@ const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 let currentRegion = "서울";
 let currentCat = "all";
 let lastNotices = [];
+let newlywedOnly = 0;
 
 // --- 탭 전환 ---------------------------------------------------
 
@@ -269,6 +270,10 @@ function collectProfile() {
     spUsedCount: +$("#spUsedCount").value || 0,
     propertyDisposed: $("#propertyDisposed").checked,
     newbornWithin2y: $("#newbornWithin2y").checked,
+    childCount: +$("#childCount").value || 0,
+    oldParentSupport: $("#oldParentSupport").checked,
+    noHouseHistory: $("#noHouseHistory").checked,
+    taxYears5: $("#taxYears5").checked,
     bankMonths: +$("#bankMonths").value || 0,
     spouseBankMonths: +$("#spouseBankMonths").value || 0,
     interestedPrice: parseAmount($("#interestedPrice").value),
@@ -313,7 +318,7 @@ async function loadNotices(region) {
   $("#noticesList").innerHTML = '<div class="loading">청약홈에서 공고를 가져오는 중…</div>';
   $("#homeNotices").innerHTML = '<div class="loading">불러오는 중…</div>';
   try {
-    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}`);
+    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}`);
     if (!r.ok) throw new Error(r.status);
     lastNotices = (await r.json()).notices || [];
   } catch (e) {
@@ -413,8 +418,8 @@ function renderTracks(p) {
   $("#kpiOk").textContent = c.OK; $("#kpiCond").textContent = c.COND; $("#kpiNo").textContent = c.NO;
 
   const box = $("#results");
-  box.innerHTML = results.filter(x => currentCat === "all" || x.t.category === currentCat).map(x => card({
-    status: x.r.status, title: x.t.name, tags: [x.t.category],
+  box.innerHTML = results.filter(x => currentCat === "all" || x.t.target === currentCat).map(x => card({
+    status: x.r.status, title: x.t.name, tags: [x.t.target, x.t.category],
     meta: x.t.regionOnly ? [`${x.t.regionOnly} 한정`] : [], reasons: x.r.reasons, notes: x.r.notes || []
   })).join("");
   bindCards(box);
@@ -462,68 +467,62 @@ function renderRules(p) {
        <div class="cmp-me"><small>내 조건</small>${meMain}${meSub ? `<br><small>${meSub}</small>` : ""}</div>
        <div>${mk(ok)}</div>
      </div>`;
-
   const marital = { single: "미혼", engaged: "예비신혼", married: "기혼" }[p.maritalStatus];
-  const dual = p.isDualIncome ? "맞벌이" : "외벌이";
 
   $("#rulesCards").innerHTML = TRACKS
-    .filter(t => currentRuleCat === "all" || t.category === currentRuleCat)
+    .filter(t => currentRuleCat === "all" || t.target === currentRuleCat)
     .map(t => {
       const v = evaluateTrack(t, p);
       const rows = [];
 
-      // 혼인
-      let marOk;
-      if (p.maritalStatus === "single") marOk = false;
-      else if (p.maritalStatus === "engaged") marOk = t.allowEngaged;
-      else marOk = p.marriageYears <= t.marriageYears || (t.allowNewbornOver7y && p.hasChildUnder6);
-      rows.push(row("혼인",
-        `${t.marriageYears}년 이내`, t.allowEngaged ? "예비신혼 가능" : "예비신혼 불가",
-        marital, p.maritalStatus === "married" ? `${p.marriageYears}년` : "", marOk));
+      if (t.requireNewlywed) {
+        let ok = p.maritalStatus === "single" ? false : p.maritalStatus === "engaged" ? t.allowEngaged : (p.marriageYears <= t.marriageYears || (t.allowNewbornOver7y && p.hasChildUnder6));
+        rows.push(row("혼인", `${t.marriageYears}년 이내`, t.allowEngaged ? "예비신혼 가능" : "예비신혼 불가", marital, p.maritalStatus === "married" ? `${p.marriageYears}년` : "", ok));
+      }
+      if (t.requireSingle) rows.push(row("혼인", "미혼(혼인 중 아님)", "", marital, "", p.maritalStatus === "single"));
+      if (t.ageMin != null) rows.push(row("연령", `만 ${t.ageMin}~${t.ageMax}세`, "", `만 ${p.age}세`, "", p.age >= t.ageMin && p.age <= t.ageMax));
+      if (t.requireChildren) rows.push(row("자녀", `미성년 ${t.requireChildren}명 이상`, "", `${p.childCount}명`, "", p.childCount >= t.requireChildren));
+      if (t.requireOldParent) rows.push(row("부양", "65세↑ 직계존속 3년", "세대주", p.oldParentSupport ? "부양 중" : "해당 없음", "", p.oldParentSupport));
+      if (t.requireNewborn) rows.push(row("출산", "2년 이내 출생", "", p.newbornWithin2y ? "해당" : "없음", "", p.newbornWithin2y));
+      if (t.requireLifeFirst) {
+        rows.push(row("소유이력", "세대원 전원 없음", "", p.noHouseHistory ? "없음" : "있음", "", p.noHouseHistory));
+        rows.push(row("소득세", "5년 이상 납부", "", p.taxYears5 ? "충족" : "미충족", "", p.taxYears5));
+      }
 
-      // 소득 (우선)
-      const pPct = p.isDualIncome ? t.incomeSpousePriority : t.incomePriority;
+      const dual = t.incomeSelfOnly ? false : p.isDualIncome;
+      const hh = t.incomeSelfOnly ? 1 : p.householdSize;
+      const dlabel = t.incomeSelfOnly ? "본인·1인" : `${dual ? "맞벌이" : "외벌이"}·${hh}인`;
+      const pPct = dual ? t.incomeSpousePriority : t.incomePriority;
       if (pPct) {
-        const th = incomeThreshold(YEAR, p.householdSize, pPct);
-        rows.push(row("소득·우선", W(th), `${pPct}% · ${dual} · ${p.householdSize}인`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
+        const th = incomeThreshold(YEAR, hh, pPct);
+        rows.push(row("소득·우선", W(th), `${pPct}% · ${dlabel}`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
       }
-      // 소득 (일반/추첨 최대)
-      const gPct = Math.max(
-        p.isDualIncome ? (t.incomeSpouseGeneral || 0) : (t.incomeGeneral || 0),
-        t.incomeLottery || 0);
+      const gPct = Math.max(dual ? (t.incomeSpouseGeneral || 0) : (t.incomeGeneral || 0), t.incomeLottery || 0);
       if (gPct && gPct !== pPct) {
-        const th = incomeThreshold(YEAR, p.householdSize, gPct);
-        rows.push(row("소득·상한", W(th), `${gPct}% · ${dual}`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
+        const th = incomeThreshold(YEAR, hh, gPct);
+        rows.push(row("소득·상한", W(th), `${gPct}% · ${dlabel}`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
       }
+      if (!pPct && !gPct) rows.push(row("소득", "제한 없음", "", W(p.monthlyIncome), "", null));
 
-      // 자산
-      rows.push(row("총자산", t.assetLimit ? W(t.assetLimit) + " 이하" : "제한 없음", "", W(p.totalAsset), "",
-        t.assetLimit ? p.totalAsset <= t.assetLimit : null));
-      rows.push(row("자동차", t.vehicleLimit ? W(t.vehicleLimit) + " 이하" : "제한 없음", "", W(p.vehicleAsset), "",
-        t.vehicleLimit ? p.vehicleAsset <= t.vehicleLimit : null));
+      rows.push(row("총자산", t.assetLimit ? W(t.assetLimit) + " 이하" : "제한 없음", "", W(p.totalAsset), "", t.assetLimit ? p.totalAsset <= t.assetLimit : null));
+      rows.push(row("자동차", t.vehicleLimit ? W(t.vehicleLimit) + " 이하" : "제한 없음", "", W(p.vehicleAsset), "", t.vehicleLimit ? p.vehicleAsset <= t.vehicleLimit : null));
 
-      // 무주택
-      let homeOk = p.isHomeless;
-      let homeMe = p.isHomeless ? "무주택" : "유주택";
+      let homeOk = p.isHomeless, homeMe = p.isHomeless ? "무주택" : "유주택";
       if (!p.isHomeless && p.hasSmallCheapHouse) {
         const ex = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
-        homeOk = ex && t.smallCheapHouseException;
-        homeMe = ex ? "소형·저가주택 보유" : "특례 기준 초과";
-      }
-      rows.push(row("무주택", "세대원 전원 무주택", t.smallCheapHouseException ? "소형·저가 특례 인정" : "특례 없음", homeMe, "", homeOk));
+        homeOk = ex && t.smallCheapHouseException; homeMe = ex ? "소형·저가주택 보유" : "특례 기준 초과";
+      } else if (!p.isHomeless && t.id === "general_priv") { homeOk = null; homeMe = "유주택(추첨만)"; }
+      rows.push(row("무주택", "세대원 전원 무주택", t.smallCheapHouseException ? "소형·저가 특례 인정" : "", homeMe, "", homeOk));
 
-      // 특공 이력
-      if (t.category === "분양") {
-        const spOk = p.spUsedCount === 0 || (p.propertyDisposed && p.newbornWithin2y);
-        rows.push(row("특공 이력", "생애 1회", "출산 시 1회 재개방", `${p.spUsedCount}회`, "", spOk));
+      if (t.category === "분양" && t.target !== "일반") {
+        rows.push(row("특공 이력", "생애 1회", "출산 시 1회 재개방", `${p.spUsedCount}회`, "", p.spUsedCount === 0 || (p.propertyDisposed && p.newbornWithin2y)));
       }
-      // 지역
       if (t.regionOnly) rows.push(row("지역", `${t.regionOnly} 한정`, "", p.region, "", p.region === t.regionOnly));
 
       return `
       <div class="rule-card status-${v.status}">
         <div class="rule-head">
-          <div class="info"><h3>${t.name}</h3><div class="sub-line">${t.category}${t.regionOnly ? " · " + t.regionOnly + " 한정" : ""}</div></div>
+          <div class="info"><h3>${t.name}</h3><div class="sub-line">${t.target} · ${t.category}${t.note ? " · " + t.note : ""}</div></div>
           <span class="pill ${v.status}">${STATUS_META[v.status].label}</span>
         </div>
         <div class="cmp">${rows.join("")}</div>
@@ -558,6 +557,8 @@ function loadLocal() {
     chk("hasChildUnder6", !!p.hasChildUnder6); chk("newbornWithin2y", !!p.newbornWithin2y); chk("isDualIncome", !!p.isDualIncome);
     chk("isHomeless", p.isHomeless !== false); chk("hasSmallCheapHouse", !!p.hasSmallCheapHouse); chk("smallHouseMetro", p.smallHouseMetro !== false);
     chk("propertyDisposed", !!p.propertyDisposed);
+    set("childCount", p.childCount || 0); chk("oldParentSupport", !!p.oldParentSupport);
+    chk("noHouseHistory", p.noHouseHistory !== false); chk("taxYears5", !!p.taxYears5);
   } catch (e) {}
 }
 
@@ -587,6 +588,10 @@ window.addEventListener("DOMContentLoaded", () => {
   $$(".chip[data-rcat]").forEach(c => c.addEventListener("click", () => {
     $$(".chip[data-rcat]").forEach(x => x.classList.remove("on")); c.classList.add("on");
     currentRuleCat = c.dataset.rcat; renderRules(collectProfile());
+  }));
+  $$(".chip[data-nw]").forEach(c => c.addEventListener("click", () => {
+    $$(".chip[data-nw]").forEach(x => x.classList.remove("on")); c.classList.add("on");
+    newlywedOnly = +c.dataset.nw; loadNotices(currentRegion);
   }));
   $("#reloadNotices").addEventListener("click", () => loadNotices(currentRegion));
   $("#runBtn").addEventListener("click", runAll);
