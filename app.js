@@ -97,10 +97,15 @@ function evaluateTrack(track, p) {
   }
 
   if (!p.isHomeless) {
-    if (p.hasSmallCheapHouse && track.smallCheapHouseException) {
-      reasons.push("EX-8: 소형·저가주택 1채 보유 — 민영주택 한정 무주택 인정 특례 적용");
-    } else if (p.hasSmallCheapHouse && !track.smallCheapHouseException) {
-      return { status: "NO", reasons: ["공공 트랙은 소형·저가주택 보유자도 유주택자로 분류 — 신청 불가"] };
+    if (p.hasSmallCheapHouse) {
+      const exempt = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
+      if (exempt && track.smallCheapHouseException) {
+        reasons.push(`EX-8: 소형·저가주택 특례 충족(${p.smallHouseType === "nonApartment" ? "비아파트" : "아파트"}·${p.smallHouseArea}㎡·${fmt(p.smallHousePrice)}) — 민영주택 한정 무주택 인정`);
+      } else if (exempt && !track.smallCheapHouseException) {
+        return { status: "NO", reasons: ["공공 트랙은 소형·저가주택 보유자도 유주택자로 분류 — 신청 불가"] };
+      } else {
+        return { status: "NO", reasons: ["보유주택이 소형·저가주택 특례 기준(면적·공시가)을 초과해 유주택자로 분류됨"] };
+      }
     } else {
       return { status: "NO", reasons: ["무주택 세대구성원 요건 미충족"] };
     }
@@ -151,6 +156,58 @@ function evaluateTrack(track, p) {
 
 function fmt(n) { return "₩" + Number(n).toLocaleString("ko-KR"); }
 
+// --- 소형·저가주택 무주택 특례 정밀 판정 (아파트/비아파트 구분) -------
+
+function isSmallCheapHouseEligible(houseType, exclusiveArea, publicPrice, isMetro) {
+  const limits = houseType === "nonApartment" ? SMALL_CHEAP_HOUSE_LIMITS.nonApartment : SMALL_CHEAP_HOUSE_LIMITS.apartment;
+  const priceCap = isMetro ? limits.priceMetro : limits.priceNonMetro;
+  return exclusiveArea <= limits.area && publicPrice <= priceCap;
+}
+
+// --- 청약통장 배우자 합산 가점 (민영 일반공급 참고용) -------------------
+
+function calculateBankScore(applicantMonths, spouseMonths) {
+  const getRawScore = (months) => {
+    if (months < 6) return months > 0 ? 1 : 0;
+    if (months < 12) return 2;
+    const years = Math.floor(months / 12);
+    return Math.min(17, years + 2);
+  };
+  const applicantScore = getRawScore(applicantMonths);
+  const spouseRaw = spouseMonths > 0 ? getRawScore(spouseMonths) : 0;
+  const spouseBonus = Math.min(3, Math.floor(spouseRaw * 0.5));
+  const totalBankScore = Math.min(17, applicantScore + spouseBonus);
+  return { totalBankScore, applicantScore, spouseBonus };
+}
+
+// --- 청년 주택드림 대출 연계 판정 ------------------------------------
+
+function evaluateYouthDreamLoan(profile) {
+  const isAgeValid = profile.age > 0 && profile.age <= YOUTH_DREAM_LOAN.maxAge;
+  const isAccountValid = profile.bankMonths >= YOUTH_DREAM_LOAN.minAccountMonths;
+  const annualIncome = profile.monthlyIncome * 12;
+  const incomeCap = profile.maritalStatus === "married" ? YOUTH_DREAM_LOAN.maxAnnualIncomeMarried : YOUTH_DREAM_LOAN.maxAnnualIncomeSingle;
+  const isIncomeValid = annualIncome <= incomeCap;
+  const isHousingValid = profile.interestedPrice > 0
+    ? (profile.interestedPrice <= YOUTH_DREAM_LOAN.maxSupplyPrice && profile.interestedArea <= YOUTH_DREAM_LOAN.maxExclusiveArea)
+    : null; // 관심 분양가 미입력 시 판정 보류
+
+  let reason = "적격 대상";
+  if (!isAgeValid) reason = "만 39세 초과로 연계 불가";
+  else if (!isAccountValid) reason = "청약통장 가입 12개월 미만";
+  else if (!isIncomeValid) reason = `연소득 ${fmt(annualIncome)} 초과 (기준 ${fmt(incomeCap)})`;
+  else if (isHousingValid === false) reason = "분양가 6억원 초과 또는 전용 85㎡ 초과로 연계 불가";
+  else if (isHousingValid === null) reason = "관심 분양가를 입력하면 정확히 판정됩니다";
+
+  return {
+    eligible: isAgeValid && isAccountValid && isIncomeValid && isHousingValid === true,
+    pending: isHousingValid === null && isAgeValid && isAccountValid && isIncomeValid,
+    maxLtv: YOUTH_DREAM_LOAN.maxLtv,
+    estimatedMinInterestRate: YOUTH_DREAM_LOAN.minRate,
+    reason
+  };
+}
+
 // --- 시나리오 프리셋 -----------------------------------------
 
 function applyScenario(profile, scenario) {
@@ -197,15 +254,24 @@ function collectProfile() {
     hasChildUnder6: document.getElementById("hasChildUnder6").checked,
     region: getSegmentedValue("regionSeg"),
     householdSize: Number(document.getElementById("householdSize").value || 1),
+    age: Number(document.getElementById("applicantAge").value || 0),
     isDualIncome: document.getElementById("isDualIncome").checked,
     monthlyIncome: parseAmount(document.getElementById("monthlyIncome").value),
     totalAsset: parseAmount(document.getElementById("totalAsset").value),
     vehicleAsset: parseAmount(document.getElementById("vehicleAsset").value),
     isHomeless: document.getElementById("isHomeless").checked,
     hasSmallCheapHouse: document.getElementById("hasSmallCheapHouse").checked,
+    smallHouseType: getSegmentedValue("smallHouseTypeSeg"),
+    smallHouseArea: Number(document.getElementById("smallHouseArea").value || 0),
+    smallHousePrice: parseAmount(document.getElementById("smallHousePrice").value),
+    smallHouseMetro: document.getElementById("smallHouseMetro").checked,
     spUsedCount: Number(document.getElementById("spUsedCount").value || 0),
     propertyDisposed: document.getElementById("propertyDisposed").checked,
-    newbornWithin2y: document.getElementById("newbornWithin2y").checked
+    newbornWithin2y: document.getElementById("newbornWithin2y").checked,
+    bankMonths: Number(document.getElementById("bankMonths").value || 0),
+    spouseBankMonths: Number(document.getElementById("spouseBankMonths").value || 0),
+    interestedPrice: parseAmount(document.getElementById("interestedPrice").value),
+    interestedArea: Number(document.getElementById("interestedArea").value || 0)
   };
 }
 
@@ -324,9 +390,28 @@ async function loadNotices(profile) {
   }
 }
 
+function renderRefInfo(profile) {
+  const bs = calculateBankScore(profile.bankMonths, profile.spouseBankMonths);
+  document.getElementById("bankScoreCard").innerHTML =
+    `<b>청약통장 가점(민영 일반공급 참고, 17점 만점)</b><br>
+     본인 ${bs.applicantScore}점 + 배우자 가산 ${bs.spouseBonus}점 = <b>${bs.totalBankScore}점</b>`;
+
+  const yl = evaluateYouthDreamLoan(profile);
+  let ylText;
+  if (yl.eligible) {
+    ylText = `<b>청년 주택드림 대출 연계 가능</b><br>최대 LTV ${Math.round(yl.maxLtv * 100)}% · 최저 금리 연 ${yl.estimatedMinInterestRate}%`;
+  } else if (yl.pending) {
+    ylText = `<b>청년 주택드림 대출 연계 — 판정 보류</b><br>${yl.reason}`;
+  } else {
+    ylText = `<b>청년 주택드림 대출 연계 불가</b><br>${yl.reason}`;
+  }
+  document.getElementById("youthLoanCard").innerHTML = ylText;
+}
+
 function runAll() {
   const profile = collectProfile();
   renderResults(profile);
+  renderRefInfo(profile);
   renderScenarioCompare(profile);
   saveLocal(profile);
   loadNotices(profile);
@@ -348,12 +433,21 @@ function loadLocal() {
     document.getElementById("hasChildUnder6").checked = !!p.hasChildUnder6;
     setSegmentedValue("regionSeg", p.region || "서울");
     document.getElementById("householdSize").value = p.householdSize || 2;
+    document.getElementById("applicantAge").value = p.age || 28;
     document.getElementById("isDualIncome").checked = !!p.isDualIncome;
     document.getElementById("monthlyIncome").value = formatAmount(p.monthlyIncome || 0);
     document.getElementById("totalAsset").value = formatAmount(p.totalAsset || 0);
     document.getElementById("vehicleAsset").value = formatAmount(p.vehicleAsset || 0);
     document.getElementById("isHomeless").checked = p.isHomeless !== false;
     document.getElementById("hasSmallCheapHouse").checked = !!p.hasSmallCheapHouse;
+    setSegmentedValue("smallHouseTypeSeg", p.smallHouseType || "apartment");
+    document.getElementById("smallHouseArea").value = p.smallHouseArea || 59;
+    document.getElementById("smallHousePrice").value = formatAmount(p.smallHousePrice || 90000000);
+    document.getElementById("smallHouseMetro").checked = p.smallHouseMetro !== false;
+    document.getElementById("bankMonths").value = p.bankMonths || 0;
+    document.getElementById("spouseBankMonths").value = p.spouseBankMonths || 0;
+    document.getElementById("interestedPrice").value = p.interestedPrice ? formatAmount(p.interestedPrice) : "";
+    document.getElementById("interestedArea").value = p.interestedArea || "";
     document.getElementById("spUsedCount").value = p.spUsedCount || 0;
     document.getElementById("propertyDisposed").checked = !!p.propertyDisposed;
     document.getElementById("newbornWithin2y").checked = !!p.newbornWithin2y;
@@ -363,14 +457,28 @@ function loadLocal() {
 window.addEventListener("DOMContentLoaded", () => {
   setupSegmented("maritalSeg");
   setupSegmented("regionSeg");
+  setupSegmented("smallHouseTypeSeg");
   setupAmountField("monthlyIncome");
   setupAmountField("totalAsset");
   setupAmountField("vehicleAsset");
+  setupAmountField("smallHousePrice");
+  setupAmountField("interestedPrice");
+
+  const smallHouseToggle = document.getElementById("hasSmallCheapHouse");
+  const smallHouseDetails = document.getElementById("smallHouseDetails");
+  const syncSmallHouseVisibility = () => {
+    smallHouseDetails.style.display = smallHouseToggle.checked ? "block" : "none";
+  };
+  smallHouseToggle.addEventListener("change", syncSmallHouseVisibility);
+  syncSmallHouseVisibility();
+
   loadLocal();
+  syncSmallHouseVisibility();
   document.getElementById("runBtn").addEventListener("click", runAll);
   // 첫 카드는 기본적으로 펼쳐서 사용법을 보여줌
   const profile = collectProfile();
   renderResults(profile);
+  renderRefInfo(profile);
   renderScenarioCompare(profile);
   loadNotices(profile);
   const first = document.querySelector(".track-card");

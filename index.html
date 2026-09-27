@@ -42,6 +42,15 @@
     </div>
 
     <div class="field-group">
+      <div class="input-row">
+        <div class="input-field">
+          <label for="applicantAge">만 나이</label>
+          <input type="number" id="applicantAge" value="28" min="19" max="99">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
       <label class="group-label">공급대상 지역</label>
       <div class="segmented" id="regionSeg" role="group">
         <button type="button" data-val="서울" class="active">서울</button>
@@ -116,6 +125,40 @@
         </div>
       </div>
     </div>
+
+    <div class="field-group">
+      <label class="group-label">청약통장 가입기간 (민영 일반공급 가점 참고용)</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="bankMonths">본인(개월)</label>
+          <input type="number" id="bankMonths" value="24" min="0">
+        </div>
+        <div class="input-field">
+          <label for="spouseBankMonths">배우자(개월)</label>
+          <input type="number" id="spouseBankMonths" value="0" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="group-label">관심 분양 단지 (청년 주택드림 대출 연계 판정용, 선택)</label>
+      <div class="input-row">
+        <div class="input-field">
+          <label for="interestedPrice">분양가</label>
+          <div class="unit-wrap">
+            <input type="text" inputmode="numeric" id="interestedPrice" value="" placeholder="예: 550,000,000">
+            <span class="unit-suffix">원</span>
+          </div>
+        </div>
+        <div class="input-field">
+          <label for="interestedArea">전용면적</label>
+          <div class="unit-wrap">
+            <input type="number" id="interestedArea" value="" placeholder="예: 84" min="0">
+            <span class="unit-suffix">㎡</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="panel">
@@ -132,10 +175,40 @@
         <div class="toggle-row">
           <div>
             <span class="t-label">소형·저가주택 1채 보유</span>
-            <span class="t-desc">전용 85㎡↓·공시가 수도권 5억↓ 비아파트</span>
+            <span class="t-desc">아파트 60㎡↓ or 비아파트 85㎡↓ (민영 특례)</span>
           </div>
           <label class="switch"><input type="checkbox" id="hasSmallCheapHouse"><span class="track"></span></label>
         </div>
+      </div>
+      <div class="field-group" id="smallHouseDetails" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
+        <div class="field-group">
+          <label class="group-label">보유주택 유형</label>
+          <div class="segmented" id="smallHouseTypeSeg" role="group">
+            <button type="button" data-val="apartment" class="active">아파트</button>
+            <button type="button" data-val="nonApartment">비아파트</button>
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="input-field">
+            <label for="smallHouseArea">전용면적</label>
+            <input type="number" id="smallHouseArea" value="59" min="0">
+          </div>
+          <div class="input-field">
+            <label for="smallHousePrice">공시가격</label>
+            <div class="unit-wrap">
+              <input type="text" inputmode="numeric" id="smallHousePrice" value="90,000,000" placeholder="예: 90,000,000">
+              <span class="unit-suffix">원</span>
+            </div>
+          </div>
+        </div>
+        <div class="toggle-list" style="margin-top:8px;">
+          <div class="toggle-row">
+            <span class="t-label">수도권 소재</span>
+            <label class="switch"><input type="checkbox" id="smallHouseMetro" checked><span class="track"></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="toggle-list">
         <div class="toggle-row">
           <span class="t-label">보유주택 처분 완료</span>
           <label class="switch"><input type="checkbox" id="propertyDisposed"><span class="track"></span></label>
@@ -153,9 +226,18 @@
     <div id="results"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="refInfoPanel">
     <div class="panel-title">
       <span class="step-num">5</span>
+      <h2>참고 정보</h2>
+    </div>
+    <div id="bankScoreCard" class="notice-box" style="margin-bottom:8px;"></div>
+    <div id="youthLoanCard" class="notice-box"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">
+      <span class="step-num">6</span>
       <h2>3-시나리오 비교</h2>
     </div>
     <p class="panel-sub">혼인신고 전 · 후 · 출산 후 상태를 가정해 자동 비교</p>
@@ -164,7 +246,7 @@
 
   <section class="panel" id="noticesPanel">
     <div class="panel-title">
-      <span class="step-num">6</span>
+      <span class="step-num">7</span>
       <h2>최근 신혼 관련 공고</h2>
     </div>
     <p class="panel-sub">선택한 지역(서울/경기) 기준 · 청약홈 실시간 연동</p>
@@ -173,8 +255,8 @@
 
   <section class="panel">
     <div class="notice-box">
-      본 판정은 2026년 기준 소득·자산 상한을 코드화한 자동판정 참고용입니다.
-      실제 신청 전 해당 회차 입주자모집공고문 및 청약홈(applyhome.co.kr) 자격확인 메뉴에서 최종 확인하세요.
+      본 서비스의 판정 결과는 모의 판정치이며, 신청 전 반드시 한국부동산원 청약홈(applyhome.co.kr) 또는 LH청약플러스 원본 공고문을 확인하시기 바랍니다.
+      2026년 기준 소득·자산 상한을 코드화한 자동판정 참고용입니다.
     </div>
   </section>
 </main>

@@ -35,6 +35,26 @@ const ASSET_LIMITS = {
   mirinaejip: 662000000              // 미리내집 총자산
 };
 
+// 소형·저가주택 무주택 인정 특례 정밀 기준 (민영주택 한정)
+// 주택유형(아파트/비아파트)에 따라 면적·공시가 상한이 다름
+const SMALL_CHEAP_HOUSE_LIMITS = {
+  apartment:    { area: 60, priceMetro: 160000000, priceNonMetro: 100000000 },
+  nonApartment: { area: 85, priceMetro: 500000000, priceNonMetro: 300000000 }
+};
+
+// 청년 주택드림 대출 연계 기준
+const YOUTH_DREAM_LOAN = {
+  maxAge: 39,
+  minAccountMonths: 12,
+  minBalance: 10000000,
+  maxAnnualIncomeSingle: 70000000,
+  maxAnnualIncomeMarried: 100000000,
+  maxSupplyPrice: 600000000,
+  maxExclusiveArea: 85,
+  maxLtv: 0.8,
+  minRate: 2.2
+};
+
 // 트랙 정의: 각 트랙의 소득기준(percent), 자산기준, 혼인기간 요건, 무주택 요건 성격
 const TRACKS = [
   {
