@@ -235,6 +235,7 @@ let currentCat = "all";
 let lastNotices = [];
 let newlywedOnly = 0;
 let noticeKind = "apt";
+let lastFailed = [];
 
 // --- 탭 전환 ---------------------------------------------------
 
@@ -304,7 +305,8 @@ function card({ status, title, tags = [], meta = [], reasons = [], notes = [], l
     ? `<ul class="why ${status}">${reasons.map(r => `<li>${r}</li>`).join("")}</ul>`
     : (status === "OK" ? `<div class="why-ok">✓ 모든 필수조건 충족${reasons.length ? " · " + reasons[0] : ""}</div>` : "");
   const extra = (status === "OK" ? reasons.slice(1) : []).concat(notes);
-  const hasDetail = extra.length || link;
+  const hasDetail = extra.length > 0;
+  const linkBar = link ? `<div class="link-bar"><a href="${link}" target="_blank" rel="noopener">📄 공고문 원문 보기 (청약홈)</a></div>` : "";
   return `
   <div class="card status-${status}">
     <div class="card-head ${hasDetail ? "" : "no-detail"}">
@@ -317,10 +319,8 @@ function card({ status, title, tags = [], meta = [], reasons = [], notes = [], l
       ${hasDetail ? CHEV : ""}
     </div>
     ${why}
-    ${hasDetail ? `<div class="card-detail">
-      ${extra.length ? `<ul class="reason-list">${extra.map(r => `<li>${r}</li>`).join("")}</ul>` : ""}
-      ${link ? `<div class="link-row"><a href="${link}" target="_blank" rel="noopener">공고 원문 보기 →</a></div>` : ""}
-    </div>` : ""}
+    ${hasDetail ? `<div class="card-detail"><ul class="reason-list">${extra.map(r => `<li>${r}</li>`).join("")}</ul></div>` : ""}
+    ${linkBar}
   </div>`;
 }
 function bindCards(root) {
@@ -335,7 +335,9 @@ async function loadNotices(region) {
   try {
     const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}&kind=${noticeKind}`);
     if (!r.ok) throw new Error(r.status);
-    lastNotices = (await r.json()).notices || [];
+    const data = await r.json();
+    lastNotices = data.notices || [];
+    lastFailed = data.failed || [];
   } catch (e) {
     lastNotices = [];
     $("#noticesList").innerHTML = '<div class="error">공고 조회 실패 — 새로고침해 주세요.</div>';
@@ -371,7 +373,8 @@ function renderNotices(p) {
     list.innerHTML = home.innerHTML = '<div class="empty">현재 이 지역에 신혼 관련 공고가 없습니다.</div>';
     return;
   }
-  list.innerHTML = html.join(""); bindCards(list);
+  const warn = lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "";
+  list.innerHTML = warn + html.join(""); bindCards(list);
   home.innerHTML = html.slice(0, 3).join(""); bindCards(home);
   loadNoticeDetails(items, p);
 }
