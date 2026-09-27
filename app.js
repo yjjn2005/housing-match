@@ -1,25 +1,27 @@
 // ============================================================
-// housing-match: 자격판정 엔진 + UI 렌더링
+// housing-match: 자격판정 엔진 + UI 렌더링 (v2 — 세그먼트/토글/아코디언 UI)
 // ============================================================
 
 const YEAR = 2026;
-const BADGE = {
-  OK: { label: "신청가능", cls: "badge-ok" },
-  COND: { label: "조건부가능", cls: "badge-cond" },
-  CHECK: { label: "확인필요", cls: "badge-check" },
-  NO: { label: "신청곤란", cls: "badge-no" }
+const STATUS_META = {
+  OK:    { label: "신청가능", chip: "ok" },
+  COND:  { label: "조건부가능", chip: "cond" },
+  CHECK: { label: "확인필요", chip: "check" },
+  NO:    { label: "신청곤란", chip: "no" }
 };
+const ICONS = {
+  OK:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>',
+  COND:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 8v5"/><circle cx="12" cy="16.5" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  CHECK: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-1 .5-1.3 1-1.3 2.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  NO:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+const CHEVRON = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>';
 
 // --- 판정 함수 ---------------------------------------------
 
 function evaluateTrack(track, p) {
-  // p = profile: {maritalStatus, marriageYears, hasChildUnder6, region,
-  //   householdSize, isDualIncome, monthlyIncome, totalAsset, vehicleAsset,
-  //   isHomeless, hasSmallCheapHouse, spUsedCount, propertyDisposed, newbornWithin2y}
-
   const reasons = [];
 
-  // Step1: 혼인상태·혼인기간 게이트
   if (p.maritalStatus === "single") {
     return { status: "NO", reasons: ["미혼 상태 — 미혼청년 특공만 해당, 이 트랙은 결혼 후 대상"] };
   }
@@ -39,12 +41,10 @@ function evaluateTrack(track, p) {
     }
   }
 
-  // 지역 제한
   if (track.regionOnly && p.region !== track.regionOnly) {
     return { status: "NO", reasons: [`${track.regionOnly} 거주자 한정 트랙`] };
   }
 
-  // Step6 EX-1: 특별공급 생애 1회 원칙 (+EX-6 출산 예외)
   if (track.category === "분양" && p.spUsedCount >= 1) {
     if (p.propertyDisposed && p.newbornWithin2y) {
       reasons.push("EX-6: 기당첨 이력 있으나 무주택 전환+2년내 출산으로 1회 재신청 허용");
@@ -53,7 +53,6 @@ function evaluateTrack(track, p) {
     }
   }
 
-  // Step2: 무주택 게이트 (+ 소형저가주택 특례 분기)
   if (!p.isHomeless) {
     if (p.hasSmallCheapHouse && track.smallCheapHouseException) {
       reasons.push("EX-8: 소형·저가주택 1채 보유 — 민영주택 한정 무주택 인정 특례 적용");
@@ -64,7 +63,6 @@ function evaluateTrack(track, p) {
     }
   }
 
-  // Step3: 자산 게이트
   if (track.vehicleLimit && p.vehicleAsset > track.vehicleLimit) {
     return { status: "NO", reasons: [`자동차가액 초과 (기준 ${fmt(track.vehicleLimit)} 이하)`] };
   }
@@ -73,7 +71,6 @@ function evaluateTrack(track, p) {
     return { status: "NO", reasons: [`총자산/부동산 기준 초과 (기준 ${fmt(assetLimit)} 이하)`] };
   }
 
-  // Step3: 소득 게이트 — 트랙별 최상위 허용 percent까지 확인
   const percentOptions = [
     track.incomePriority, track.incomeSpousePriority,
     track.incomeGeneral, track.incomeSpouseGeneral,
@@ -88,7 +85,6 @@ function evaluateTrack(track, p) {
     if (p.monthlyIncome > threshold) {
       return { status: "NO", reasons: [`세대 월소득 ${fmt(p.monthlyIncome)} > 기준 ${fmt(threshold)} (${applicablePercent}%, ${p.isDualIncome ? "맞벌이" : "외벌이"})`] };
     }
-    // 우선공급 통과 여부 별도 표시
     const priorityPercent = p.isDualIncome ? track.incomeSpousePriority : track.incomePriority;
     if (priorityPercent) {
       const pThreshold = incomeThreshold(YEAR, p.householdSize, priorityPercent);
@@ -100,7 +96,6 @@ function evaluateTrack(track, p) {
     }
   }
 
-  // EX-7 정보성 경고 (배제 아님)
   if (track.category === "분양" && p.maritalStatus === "married") {
     reasons.push("EX-7: 부부 중복청약 시 선접수 1건만 유효 처리됨(참고)");
   }
@@ -111,9 +106,7 @@ function evaluateTrack(track, p) {
   return { status: "OK", reasons };
 }
 
-function fmt(n) {
-  return "₩" + Number(n).toLocaleString("ko-KR");
-}
+function fmt(n) { return "₩" + Number(n).toLocaleString("ko-KR"); }
 
 // --- 시나리오 프리셋 -----------------------------------------
 
@@ -122,27 +115,44 @@ function applyScenario(profile, scenario) {
   if (scenario === "before") {
     p.maritalStatus = "single";
   } else if (scenario === "after") {
-    p.maritalStatus = "married";
-    p.marriageYears = 0;
-    p.hasChildUnder6 = false;
-    p.newbornWithin2y = false;
+    p.maritalStatus = "married"; p.marriageYears = 0;
+    p.hasChildUnder6 = false; p.newbornWithin2y = false;
   } else if (scenario === "newborn") {
-    p.maritalStatus = "married";
-    p.marriageYears = 0;
-    p.hasChildUnder6 = true;
-    p.newbornWithin2y = true;
+    p.maritalStatus = "married"; p.marriageYears = 0;
+    p.hasChildUnder6 = true; p.newbornWithin2y = true;
   }
   return p;
 }
 
-// --- 렌더링 ---------------------------------------------------
+// --- 세그먼트 컨트롤 ------------------------------------------
+
+function setupSegmented(id) {
+  const group = document.getElementById(id);
+  group.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      group.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+}
+function getSegmentedValue(id) {
+  return document.querySelector(`#${id} button.active`).dataset.val;
+}
+function setSegmentedValue(id, val) {
+  const group = document.getElementById(id);
+  group.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("active", b.dataset.val === val);
+  });
+}
+
+// --- 프로필 수집 ------------------------------------------------
 
 function collectProfile() {
   return {
-    maritalStatus: document.getElementById("maritalStatus").value,
+    maritalStatus: getSegmentedValue("maritalSeg"),
     marriageYears: Number(document.getElementById("marriageYears").value || 0),
     hasChildUnder6: document.getElementById("hasChildUnder6").checked,
-    region: document.getElementById("region").value,
+    region: getSegmentedValue("regionSeg"),
     householdSize: Number(document.getElementById("householdSize").value || 1),
     isDualIncome: document.getElementById("isDualIncome").checked,
     monthlyIncome: Number(document.getElementById("monthlyIncome").value || 0) * 10000,
@@ -156,26 +166,52 @@ function collectProfile() {
   };
 }
 
+// --- 렌더링 ---------------------------------------------------
+
+function renderSummary(results) {
+  const counts = { OK: 0, COND: 0, CHECK: 0, NO: 0 };
+  results.forEach(r => counts[r.status]++);
+  const strip = document.getElementById("summaryStrip");
+  strip.innerHTML = `
+    <div class="summary-chip ok"><span class="n">${counts.OK}</span>신청가능</div>
+    <div class="summary-chip cond"><span class="n">${counts.COND}</span>조건부</div>
+    <div class="summary-chip check"><span class="n">${counts.CHECK}</span>확인필요</div>
+    <div class="summary-chip no"><span class="n">${counts.NO}</span>신청곤란</div>
+  `;
+}
+
 function renderResults(profile) {
   const container = document.getElementById("results");
   container.innerHTML = "";
+  const results = [];
+
   TRACKS.forEach(track => {
     const result = evaluateTrack(track, profile);
-    const badge = BADGE[result.status];
+    results.push(result);
+    const meta = STATUS_META[result.status];
+
     const card = document.createElement("div");
-    card.className = "track-card";
+    card.className = `track-card status-${result.status}`;
     card.innerHTML = `
       <div class="track-head">
-        <span class="track-name">${track.name}</span>
-        <span class="badge ${badge.cls}">${badge.label}</span>
+        <div class="status-icon status-${result.status}">${ICONS[result.status]}</div>
+        <div class="info">
+          <div class="track-name">${track.name}</div>
+          <div class="track-meta">${track.category}${track.regionOnly ? " · " + track.regionOnly + " 한정" : ""} · <span class="track-badge-label">${meta.label}</span></div>
+        </div>
+        ${CHEVRON}
       </div>
-      <div class="track-cat">${track.category}${track.regionOnly ? " · " + track.regionOnly + " 한정" : ""}</div>
-      <ul class="reasons">
-        ${result.reasons.map(r => `<li>${r}</li>`).join("")}
-      </ul>
+      <div class="track-detail">
+        <ul>${result.reasons.map(r => `<li>${r}</li>`).join("")}</ul>
+      </div>
     `;
+    card.querySelector(".track-head").addEventListener("click", () => {
+      card.classList.toggle("open");
+    });
     container.appendChild(card);
   });
+
+  renderSummary(results);
 }
 
 function renderScenarioCompare(baseProfile) {
@@ -184,19 +220,20 @@ function renderScenarioCompare(baseProfile) {
     { key: "after", label: "② 혼인신고 후" },
     { key: "newborn", label: "③ 출산·임신 후" }
   ];
-  const table = document.getElementById("scenarioTable");
-  let html = "<tr><th>트랙</th>" + scenarios.map(s => `<th>${s.label}</th>`).join("") + "</tr>";
-  TRACKS.forEach(track => {
-    html += `<tr><td>${track.name}</td>`;
-    scenarios.forEach(s => {
-      const p = applyScenario(baseProfile, s.key);
+  const scroll = document.getElementById("scenarioScroll");
+  scroll.innerHTML = "";
+  scenarios.forEach(s => {
+    const p = applyScenario(baseProfile, s.key);
+    const col = document.createElement("div");
+    col.className = "scenario-col";
+    let rows = "";
+    TRACKS.forEach(track => {
       const r = evaluateTrack(track, p);
-      const badge = BADGE[r.status];
-      html += `<td><span class="badge ${badge.cls} small">${badge.label}</span></td>`;
+      rows += `<div class="scenario-row"><span class="name">${track.name}</span><span class="scenario-dot ${r.status}"></span></div>`;
     });
-    html += "</tr>";
+    col.innerHTML = `<h3>${s.label}</h3>${rows}`;
+    scroll.appendChild(col);
   });
-  table.innerHTML = html;
 }
 
 function runAll() {
@@ -204,24 +241,23 @@ function runAll() {
   renderResults(profile);
   renderScenarioCompare(profile);
   saveLocal(profile);
+  document.getElementById("resultsPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // --- 로컬 저장(브라우저) --------------------------------------
 
 function saveLocal(profile) {
-  try {
-    localStorage.setItem("housingMatchProfile", JSON.stringify(profile));
-  } catch (e) { /* ignore */ }
+  try { localStorage.setItem("housingMatchProfile", JSON.stringify(profile)); } catch (e) {}
 }
 function loadLocal() {
   try {
     const raw = localStorage.getItem("housingMatchProfile");
     if (!raw) return;
     const p = JSON.parse(raw);
-    document.getElementById("maritalStatus").value = p.maritalStatus || "single";
+    setSegmentedValue("maritalSeg", p.maritalStatus || "married");
     document.getElementById("marriageYears").value = p.marriageYears || 0;
     document.getElementById("hasChildUnder6").checked = !!p.hasChildUnder6;
-    document.getElementById("region").value = p.region || "서울";
+    setSegmentedValue("regionSeg", p.region || "서울");
     document.getElementById("householdSize").value = p.householdSize || 2;
     document.getElementById("isDualIncome").checked = !!p.isDualIncome;
     document.getElementById("monthlyIncome").value = (p.monthlyIncome || 0) / 10000;
@@ -232,11 +268,18 @@ function loadLocal() {
     document.getElementById("spUsedCount").value = p.spUsedCount || 0;
     document.getElementById("propertyDisposed").checked = !!p.propertyDisposed;
     document.getElementById("newbornWithin2y").checked = !!p.newbornWithin2y;
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  setupSegmented("maritalSeg");
+  setupSegmented("regionSeg");
   loadLocal();
   document.getElementById("runBtn").addEventListener("click", runAll);
-  runAll();
+  // 첫 카드는 기본적으로 펼쳐서 사용법을 보여줌
+  const profile = collectProfile();
+  renderResults(profile);
+  renderScenarioCompare(profile);
+  const first = document.querySelector(".track-card");
+  if (first) first.classList.add("open");
 });

@@ -2,112 +2,179 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>청약임대통합앱 — 신혼부부 자격판정</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
-  <h1>청약·임대 통합 자격판정</h1>
-  <p>신혼부부·예비신혼·출산가구 중심 · 2026년 기준</p>
+  <div class="eyebrow">2026년 기준</div>
+  <h1>청약·임대 자격판정</h1>
 </header>
 
 <main>
   <section class="panel">
-    <h2>프로필 입력</h2>
-    <div class="form-grid">
-      <div class="field">
-        <label>혼인 상태</label>
-        <select id="maritalStatus">
-          <option value="single">미혼</option>
-          <option value="engaged">예비신혼부부</option>
-          <option value="married" selected>기혼(신혼부부)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>혼인기간(년)</label>
-        <input type="number" id="marriageYears" value="0" min="0">
-      </div>
-      <div class="field">
-        <label>거주(공급대상) 지역</label>
-        <select id="region">
-          <option value="서울">서울</option>
-          <option value="경기">경기</option>
-          <option value="기타">기타</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>가구원수</label>
-        <input type="number" id="householdSize" value="2" min="1" max="10">
-      </div>
-      <div class="field">
-        <label>세대 월소득(만원)</label>
-        <input type="number" id="monthlyIncome" value="500" min="0">
-      </div>
-      <div class="field">
-        <label>총자산(만원)</label>
-        <input type="number" id="totalAsset" value="20000" min="0">
-      </div>
-      <div class="field">
-        <label>자동차가액(만원)</label>
-        <input type="number" id="vehicleAsset" value="2000" min="0">
-      </div>
-      <div class="field">
-        <label>과거 특공 당첨 횟수</label>
-        <input type="number" id="spUsedCount" value="0" min="0">
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="hasChildUnder6">
-        <label for="hasChildUnder6">만 6세 이하 자녀 있음</label>
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="isDualIncome">
-        <label for="isDualIncome">맞벌이</label>
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="isHomeless" checked>
-        <label for="isHomeless">무주택 세대구성원</label>
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="hasSmallCheapHouse">
-        <label for="hasSmallCheapHouse">소형·저가주택 1채 보유</label>
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="propertyDisposed">
-        <label for="propertyDisposed">보유주택 처분 완료</label>
-      </div>
-      <div class="field checkbox">
-        <input type="checkbox" id="newbornWithin2y">
-        <label for="newbornWithin2y">2년 내 출산</label>
+    <div class="panel-title">
+      <span class="step-num">1</span>
+      <h2>혼인·가족 상태</h2>
+    </div>
+
+    <div class="field-group">
+      <label class="group-label">혼인 상태</label>
+      <div class="segmented" id="maritalSeg" role="group">
+        <button type="button" data-val="single">미혼</button>
+        <button type="button" data-val="engaged">예비신혼</button>
+        <button type="button" data-val="married" class="active">기혼</button>
       </div>
     </div>
-    <button id="runBtn">자격 판정 실행</button>
+
+    <div class="field-group">
+      <div class="input-row">
+        <div class="input-field">
+          <label for="marriageYears">혼인기간(년)</label>
+          <input type="number" id="marriageYears" value="0" min="0">
+        </div>
+        <div class="input-field">
+          <label for="householdSize">가구원수</label>
+          <input type="number" id="householdSize" value="2" min="1" max="10">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="group-label">공급대상 지역</label>
+      <div class="segmented" id="regionSeg" role="group">
+        <button type="button" data-val="서울" class="active">서울</button>
+        <button type="button" data-val="경기">경기</button>
+        <button type="button" data-val="기타">기타</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="toggle-list">
+        <div class="toggle-row">
+          <span class="t-label">만 6세 이하 자녀 있음</span>
+          <label class="switch"><input type="checkbox" id="hasChildUnder6"><span class="track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="t-label">2년 내 출산</span>
+          <label class="switch"><input type="checkbox" id="newbornWithin2y"><span class="track"></span></label>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="panel">
-    <h2>트랙별 판정 결과</h2>
+    <div class="panel-title">
+      <span class="step-num">2</span>
+      <h2>소득·자산</h2>
+    </div>
+
+    <div class="field-group">
+      <div class="toggle-list">
+        <div class="toggle-row">
+          <span class="t-label">맞벌이</span>
+          <label class="switch"><input type="checkbox" id="isDualIncome"><span class="track"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="input-row">
+        <div class="input-field">
+          <label for="monthlyIncome">세대 월소득</label>
+          <div class="unit-wrap">
+            <input type="number" id="monthlyIncome" value="500" min="0">
+            <span class="unit-suffix">만원</span>
+          </div>
+        </div>
+        <div class="input-field">
+          <label for="totalAsset">총자산</label>
+          <div class="unit-wrap">
+            <input type="number" id="totalAsset" value="20000" min="0">
+            <span class="unit-suffix">만원</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="input-row">
+        <div class="input-field">
+          <label for="vehicleAsset">자동차가액</label>
+          <div class="unit-wrap">
+            <input type="number" id="vehicleAsset" value="2000" min="0">
+            <span class="unit-suffix">만원</span>
+          </div>
+        </div>
+        <div class="input-field">
+          <label for="spUsedCount">과거 특공 당첨</label>
+          <div class="unit-wrap">
+            <input type="number" id="spUsedCount" value="0" min="0">
+            <span class="unit-suffix">회</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">
+      <span class="step-num">3</span>
+      <h2>주택 소유 이력</h2>
+    </div>
+    <div class="field-group">
+      <div class="toggle-list">
+        <div class="toggle-row">
+          <span class="t-label">무주택 세대구성원</span>
+          <label class="switch"><input type="checkbox" id="isHomeless" checked><span class="track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <span class="t-label">소형·저가주택 1채 보유</span>
+            <span class="t-desc">전용 85㎡↓·공시가 수도권 5억↓ 비아파트</span>
+          </div>
+          <label class="switch"><input type="checkbox" id="hasSmallCheapHouse"><span class="track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="t-label">보유주택 처분 완료</span>
+          <label class="switch"><input type="checkbox" id="propertyDisposed"><span class="track"></span></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="resultsPanel">
+    <div class="panel-title">
+      <span class="step-num">4</span>
+      <h2>트랙별 판정 결과</h2>
+    </div>
+    <div class="summary-strip" id="summaryStrip"></div>
     <div id="results"></div>
   </section>
 
   <section class="panel">
-    <h2>3-시나리오 비교</h2>
-    <div class="notice-box">
-      입력한 프로필을 기준으로 혼인신고 전 / 후 / 출산·임신 후 상태를 가정해 자동 비교합니다.
+    <div class="panel-title">
+      <span class="step-num">5</span>
+      <h2>3-시나리오 비교</h2>
     </div>
-    <div style="overflow-x:auto; margin-top:10px;">
-      <table id="scenarioTable"></table>
-    </div>
+    <p class="panel-sub">혼인신고 전 · 후 · 출산 후 상태를 가정해 자동 비교</p>
+    <div class="scenario-scroll" id="scenarioScroll"></div>
   </section>
 
   <section class="panel">
-    <h2>안내</h2>
     <div class="notice-box">
-      본 판정은 공개된 2026년 기준 소득·자산 상한을 코드화한 자동판정이며, 참고용입니다.
-      실제 신청 전 반드시 해당 회차 입주자모집공고문 및 청약홈(applyhome.co.kr) 자격확인 메뉴에서 최종 확인하시기 바랍니다.
-      신규 공고 자동 알림 기능은 API 연동 후 추가될 예정입니다.
+      본 판정은 2026년 기준 소득·자산 상한을 코드화한 자동판정 참고용입니다.
+      실제 신청 전 해당 회차 입주자모집공고문 및 청약홈(applyhome.co.kr) 자격확인 메뉴에서 최종 확인하세요.
     </div>
   </section>
 </main>
+
+<div class="cta-bar">
+  <div class="inner">
+    <button id="runBtn">자격 판정 실행</button>
+  </div>
+</div>
 
 <footer>housing-match · 유앤김패밀리</footer>
 
