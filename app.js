@@ -29,6 +29,16 @@ function noticeCandidates(houseSecdNm) {
 }
 
 function evaluateNotice(notice, profile) {
+  const kind = notice.공고구분 || "";
+  const type = notice.공급유형 || "";
+  if (kind.includes("오피스텔") || type.includes("오피스텔") || type.includes("도시형") || type.includes("생활숙박")) {
+    if (type.includes("민간임대")) return { status: "CHECK", reasons: ["공공지원민간임대 — 공고별 소득·자산 기준이 달라 공고문 확인 필요"], notes: [] };
+    return { status: "OK", reasons: ["청약통장·무주택 요건 없음 — 만 19세 이상 누구나 신청 가능 (특공 판정 대상 아님)"], notes: ["거주지역 제한 없음 · 주택 수 미산입(주거용 오피스텔은 세금 시 주택 간주 가능)"] };
+  }
+  if (kind.includes("무순위") || type.includes("무순위") || type.includes("재공급")) {
+    if (profile.isHomeless) return { status: "OK", reasons: ["무순위·잔여세대 — 청약통장 불필요, 무주택 세대구성원 요건 충족"], notes: ["규제지역은 해당 지역 거주 요건 확인 · 비규제지역은 거주지 무관"] };
+    return { status: "COND", reasons: ["유주택자 — 비규제지역 무순위는 신청 가능, 규제지역(강남3구·용산 등)은 무주택 필요"], notes: ["공고문의 규제지역 여부 확인"] };
+  }
   const cands = noticeCandidates(notice.공급유형);
   if (!cands.length) {
     return { status: "CHECK", reasons: [`공급유형 "${notice.공급유형}"은 자동판정 트랙과 매치되지 않음 — 공고문 직접 확인`], notes: [] };
@@ -224,6 +234,7 @@ let currentRegion = "서울";
 let currentCat = "all";
 let lastNotices = [];
 let newlywedOnly = 0;
+let noticeKind = "apt";
 
 // --- 탭 전환 ---------------------------------------------------
 
@@ -321,7 +332,7 @@ async function loadNotices(region) {
   $("#noticesList").innerHTML = '<div class="loading">청약홈에서 공고를 가져오는 중…</div>';
   $("#homeNotices").innerHTML = '<div class="loading">불러오는 중…</div>';
   try {
-    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}`);
+    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}&kind=${noticeKind}`);
     if (!r.ok) throw new Error(r.status);
     lastNotices = (await r.json()).notices || [];
   } catch (e) {
@@ -348,10 +359,10 @@ function renderNotices(p) {
   const html = items.map(({ n, v }) => {
     const no = n.주택관리번호 || n.공고번호;
     return card({
-      status: v.status, title: n.단지명, tags: [n.공급유형],
+      status: v.status, title: n.단지명, tags: [n.공고구분 || "아파트", n.공급유형],
       meta: [n.지역, `${n.공급규모}세대`, `접수 ${n.접수시작}~${n.접수종료}`],
       reasons: v.reasons, notes: v.notes || [], link: n.공고URL
-    }).replace('<div class="card-detail">', `<div class="detail-slot" data-no="${no}"><div class="detail-loading">공고문 자동조회 중…</div></div><div class="card-detail">`);
+    }).replace('<div class="card-detail">', (n.공고구분 || "아파트") === "아파트" ? `<div class="detail-slot" data-no="${no}"><div class="detail-loading">공고문 자동조회 중…</div></div><div class="card-detail">` : '<div class="card-detail">');
   });
   const list = $("#noticesList"), home = $("#homeNotices");
   if (!items.length) {
@@ -369,6 +380,7 @@ function renderNotices(p) {
 const detailCache = {};
 async function loadNoticeDetails(items, p) {
   for (const { n } of items) {
+    if ((n.공고구분 || "아파트") !== "아파트") continue;
     const no = n.주택관리번호 || n.공고번호;
     const slots = $$(`.detail-slot[data-no="${no}"]`);
     if (!slots.length) continue;
@@ -591,6 +603,10 @@ window.addEventListener("DOMContentLoaded", () => {
   $$(".chip[data-rcat]").forEach(c => c.addEventListener("click", () => {
     $$(".chip[data-rcat]").forEach(x => x.classList.remove("on")); c.classList.add("on");
     currentRuleCat = c.dataset.rcat; renderRules(collectProfile());
+  }));
+  $$(".chip[data-kind]").forEach(c => c.addEventListener("click", () => {
+    $$(".chip[data-kind]").forEach(x => x.classList.remove("on")); c.classList.add("on");
+    noticeKind = c.dataset.kind; loadNotices(currentRegion);
   }));
   $$(".chip[data-nw]").forEach(c => c.addEventListener("click", () => {
     $$(".chip[data-nw]").forEach(x => x.classList.remove("on")); c.classList.add("on");
