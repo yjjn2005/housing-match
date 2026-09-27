@@ -382,7 +382,7 @@ function renderNotices(p) {
     return;
   }
   if (!items.length) {
-    list.innerHTML = home.innerHTML = '<div class="empty">현재 이 지역에 신혼 관련 공고가 없습니다.</div>';
+    list.innerHTML = home.innerHTML = '<div class="empty">현재 진행 가능한 공고가 없습니다.</div>';
     return;
   }
   const warn = lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "";
@@ -451,14 +451,15 @@ function calendarHTML(items) {
       if (!s.시작) continue;
       const end = s.종료 || s.시작;
       let d = new Date(s.시작), last = new Date(end), guard = 0;
+      const todayK = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
       while (d <= last && guard++ < 10) {
         const key = d.toISOString().slice(0, 10);
-        (days[key] = days[key] || []).push({ n, v, tag: s.구분 });
+        if (key >= todayK) (days[key] = days[key] || []).push({ n, v, tag: s.구분 });
         d.setDate(d.getDate() + 1);
       }
     }
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
   const keys = Object.keys(days).sort();
   const W = ["일", "월", "화", "수", "목", "금", "토"];
   return keys.map(k => {
@@ -476,7 +477,7 @@ function calendarHTML(items) {
         <div class="link-bar"><a href="${n.공고URL}" target="_blank" rel="noopener">📄 공고문 원문 보기 (청약홈)</a></div>
       </div>`).join("");
     return `<div class="cal-day ${cls}"><div class="cal-head">${label}${k === today ? '<span class="cal-today">오늘</span>' : ""}<span class="cal-cnt">${days[k].length}건</span></div>${rows}</div>`;
-  }).join("") || '<div class="empty">이 기간에 접수 일정이 없습니다.</div>';
+  }).join("") || '<div class="empty">현재 진행 중이거나 예정된 접수 일정이 없습니다.</div>';
 }
 
 // --- 유형별 --------------------------------------------------------
