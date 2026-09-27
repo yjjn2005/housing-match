@@ -3,6 +3,7 @@
 // ============================================================
 
 const YEAR = 2026;
+const API_BASE = "https://housing-match-api.yjjn2005.workers.dev";
 const STATUS_META = {
   OK:    { label: "신청가능", chip: "ok" },
   COND:  { label: "조건부가능", chip: "cond" },
@@ -236,11 +237,40 @@ function renderScenarioCompare(baseProfile) {
   });
 }
 
+// --- 신규 공고 조회 ---------------------------------------------
+
+async function loadNotices(region) {
+  const list = document.getElementById("noticesList");
+  list.innerHTML = '<div class="notice-loading">공고 조회 중…</div>';
+  try {
+    const res = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.notices || data.notices.length === 0) {
+      list.innerHTML = '<div class="notice-empty">현재 조건에 맞는 신혼 관련 공고가 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = data.notices.map(n => `
+      <a class="notice-item" href="${n.공고URL}" target="_blank" rel="noopener">
+        <div class="n-title">${n.단지명}</div>
+        <div class="n-meta">
+          <span class="n-tag">${n.공급유형}</span>
+          <span>${n.지역} · ${n.공급규모}세대</span>
+          <span>접수 ${n.접수시작}~${n.접수종료}</span>
+        </div>
+      </a>
+    `).join("");
+  } catch (e) {
+    list.innerHTML = `<div class="notice-error">공고 조회 실패 — 잠시 후 다시 시도해주세요.</div>`;
+  }
+}
+
 function runAll() {
   const profile = collectProfile();
   renderResults(profile);
   renderScenarioCompare(profile);
   saveLocal(profile);
+  loadNotices(profile.region);
   document.getElementById("resultsPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -280,6 +310,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const profile = collectProfile();
   renderResults(profile);
   renderScenarioCompare(profile);
+  loadNotices(profile.region);
   const first = document.querySelector(".track-card");
   if (first) first.classList.add("open");
 });
