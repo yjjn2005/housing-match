@@ -49,7 +49,7 @@
     <div class="quick-grid">
       <button class="quick" data-goto="v-profile"><span class="q-ico">✎</span><b>내 조건</b><small>입력·수정</small></button>
       <button class="quick" data-goto="v-tracks"><span class="q-ico">▦</span><b>유형별 판정</b><small>9개 트랙</small></button>
-      <button class="quick" data-goto="v-rules"><span class="q-ico">☰</span><b>자격 기준표</b><small>소득·자산 상한</small></button>
+      <button class="quick" data-goto="v-rules"><span class="q-ico">☰</span><b>청약 조건</b><small>기준 vs 내 조건</small></button>
     </div>
   </section>
 
@@ -186,10 +186,16 @@
 
   <!-- ================= 기준표 ================= -->
   <section class="view" id="v-rules">
-    <div class="page-head"><h1>전체 자격조건</h1></div>
-    <p class="page-sub">2026년 고시 기준. 수치는 <code>data.js</code>에서 관리되어 개정 시 자동 반영됩니다.</p>
+    <div class="page-head"><h1>청약 조건</h1></div>
+    <p class="page-sub">트랙별 기준값 옆에 <b>내 조건</b>을 나란히 표시합니다. 가구원 수 기준으로 소득 상한을 실제 금액으로 환산했습니다.</p>
 
-    <div class="section-head"><h2>트랙별 기준</h2></div>
+    <div class="chip-row">
+      <button class="chip on" data-rcat="all">전체</button>
+      <button class="chip" data-rcat="분양">분양</button>
+      <button class="chip" data-rcat="임대">임대</button>
+    </div>
+    <div class="legend-inline"><span class="mk ok">✓</span>충족 <span class="mk no">✗</span>미충족 <span class="mk na">–</span>해당없음</div>
+
     <div id="rulesCards" class="card-list"></div>
 
     <div class="section-head"><h2>공통 판정 원칙</h2></div>
@@ -200,14 +206,6 @@
       <div class="principle"><b>특공 1회</b>생애 1회 원칙. 기당첨 후 무주택 전환+2년 내 출산 시 1회 재개방. 부부 중복청약은 선접수 1건만 유효.</div>
       <div class="principle"><b>통장·대출</b>민영 일반공급 가점 = 본인 + 배우자 50% 가산(최대 3점, 17점 상한). 청년 주택드림 대출은 39세·연소득·분양가 6억·85㎡.</div>
       <div class="principle"><b>지역 한정</b>미리내집(장기전세Ⅱ)은 서울 거주자 한정.</div>
-    </div>
-
-    <div class="section-head"><h2>판정 결과의 의미</h2></div>
-    <div class="legend">
-      <div><span class="pill OK">신청가능</span>모든 필수조건 충족</div>
-      <div><span class="pill COND">조건부</span>혼인신고 시점 등에 따라 확정</div>
-      <div><span class="pill CHECK">확인필요</span>자동판정 트랙과 미매치 — 공고문 확인</div>
-      <div><span class="pill NO">신청곤란</span>필수조건 불충족 — 사유 표시</div>
     </div>
   </section>
 
@@ -220,7 +218,7 @@
   <button class="tb" data-view="v-profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>내 조건</span></button>
   <button class="tb" data-view="v-notices"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>공고</span></button>
   <button class="tb" data-view="v-tracks"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg><span>유형별</span></button>
-  <button class="tb" data-view="v-rules"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>기준표</span></button>
+  <button class="tb" data-view="v-rules"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>청약조건</span></button>
 </nav>
 
 <script src="data.js"></script>

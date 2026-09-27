@@ -404,28 +404,92 @@ function renderScenarios(base) {
 const pctTxt = (a, b) => a == null ? "—" : `${a}%` + (b != null ? ` · 맞벌이 ${b}%` : "");
 const wonTxt = n => n == null ? "제한 없음" : "₩" + Number(n).toLocaleString("ko-KR");
 
-function renderRules() {
-  $("#rulesCards").innerHTML = TRACKS.map(t => `
-    <div class="rule-card">
-      <h3>${t.name}<span class="tag">${t.category}</span></h3>
-      <div class="rule-grid2">
-        <div><small>혼인·자격</small><b>${t.marriageYears}년 이내${t.allowEngaged ? " · 예비신혼 가능" : " · 예비신혼 불가"}</b></div>
-        <div><small>7년 초과 시</small><b>${t.allowNewbornOver7y ? "6세↓ 자녀 보유 시 유지" : "자격 상실"}</b></div>
-        <div><small>우선공급 소득</small><b>${pctTxt(t.incomePriority, t.incomeSpousePriority)}</b></div>
-        <div><small>일반/추첨 소득</small><b>${pctTxt(t.incomeGeneral, t.incomeSpouseGeneral)}${t.incomeLottery ? ` · 추첨 ${t.incomeLottery}%` : ""}</b></div>
-        <div><small>총자산·부동산</small><b>${wonTxt(t.assetLimit)}</b></div>
-        <div><small>자동차</small><b>${wonTxt(t.vehicleLimit)}</b></div>
-        ${t.regionOnly ? `<div><small>지역</small><b>${t.regionOnly} 한정</b></div>` : ""}
-        ${t.smallCheapHouseException ? `<div><small>특례</small><b>소형·저가주택 무주택 인정</b></div>` : ""}
-      </div>
-    </div>`).join("");
+let currentRuleCat = "all";
+
+function renderRules(p) {
+  const W = n => "₩" + Number(n).toLocaleString("ko-KR");
+  const mk = ok => ok === null ? '<span class="mk na">–</span>' : ok ? '<span class="mk ok">✓</span>' : '<span class="mk no">✗</span>';
+  const row = (lbl, stdMain, stdSub, meMain, meSub, ok) =>
+    `<div class="cmp-row ${ok === false ? "miss" : ""}">
+       <div class="cmp-lbl">${lbl}</div>
+       <div class="cmp-std"><small>기준</small>${stdMain}${stdSub ? `<br><small>${stdSub}</small>` : ""}</div>
+       <div class="cmp-me"><small>내 조건</small>${meMain}${meSub ? `<br><small>${meSub}</small>` : ""}</div>
+       <div>${mk(ok)}</div>
+     </div>`;
+
+  const marital = { single: "미혼", engaged: "예비신혼", married: "기혼" }[p.maritalStatus];
+  const dual = p.isDualIncome ? "맞벌이" : "외벌이";
+
+  $("#rulesCards").innerHTML = TRACKS
+    .filter(t => currentRuleCat === "all" || t.category === currentRuleCat)
+    .map(t => {
+      const v = evaluateTrack(t, p);
+      const rows = [];
+
+      // 혼인
+      let marOk;
+      if (p.maritalStatus === "single") marOk = false;
+      else if (p.maritalStatus === "engaged") marOk = t.allowEngaged;
+      else marOk = p.marriageYears <= t.marriageYears || (t.allowNewbornOver7y && p.hasChildUnder6);
+      rows.push(row("혼인",
+        `${t.marriageYears}년 이내`, t.allowEngaged ? "예비신혼 가능" : "예비신혼 불가",
+        marital, p.maritalStatus === "married" ? `${p.marriageYears}년` : "", marOk));
+
+      // 소득 (우선)
+      const pPct = p.isDualIncome ? t.incomeSpousePriority : t.incomePriority;
+      if (pPct) {
+        const th = incomeThreshold(YEAR, p.householdSize, pPct);
+        rows.push(row("소득·우선", W(th), `${pPct}% · ${dual} · ${p.householdSize}인`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
+      }
+      // 소득 (일반/추첨 최대)
+      const gPct = Math.max(
+        p.isDualIncome ? (t.incomeSpouseGeneral || 0) : (t.incomeGeneral || 0),
+        t.incomeLottery || 0);
+      if (gPct && gPct !== pPct) {
+        const th = incomeThreshold(YEAR, p.householdSize, gPct);
+        rows.push(row("소득·상한", W(th), `${gPct}% · ${dual}`, W(p.monthlyIncome), "월소득", p.monthlyIncome <= th));
+      }
+
+      // 자산
+      rows.push(row("총자산", t.assetLimit ? W(t.assetLimit) + " 이하" : "제한 없음", "", W(p.totalAsset), "",
+        t.assetLimit ? p.totalAsset <= t.assetLimit : null));
+      rows.push(row("자동차", t.vehicleLimit ? W(t.vehicleLimit) + " 이하" : "제한 없음", "", W(p.vehicleAsset), "",
+        t.vehicleLimit ? p.vehicleAsset <= t.vehicleLimit : null));
+
+      // 무주택
+      let homeOk = p.isHomeless;
+      let homeMe = p.isHomeless ? "무주택" : "유주택";
+      if (!p.isHomeless && p.hasSmallCheapHouse) {
+        const ex = isSmallCheapHouseEligible(p.smallHouseType, p.smallHouseArea, p.smallHousePrice, p.smallHouseMetro);
+        homeOk = ex && t.smallCheapHouseException;
+        homeMe = ex ? "소형·저가주택 보유" : "특례 기준 초과";
+      }
+      rows.push(row("무주택", "세대원 전원 무주택", t.smallCheapHouseException ? "소형·저가 특례 인정" : "특례 없음", homeMe, "", homeOk));
+
+      // 특공 이력
+      if (t.category === "분양") {
+        const spOk = p.spUsedCount === 0 || (p.propertyDisposed && p.newbornWithin2y);
+        rows.push(row("특공 이력", "생애 1회", "출산 시 1회 재개방", `${p.spUsedCount}회`, "", spOk));
+      }
+      // 지역
+      if (t.regionOnly) rows.push(row("지역", `${t.regionOnly} 한정`, "", p.region, "", p.region === t.regionOnly));
+
+      return `
+      <div class="rule-card status-${v.status}">
+        <div class="rule-head">
+          <div class="info"><h3>${t.name}</h3><div class="sub-line">${t.category}${t.regionOnly ? " · " + t.regionOnly + " 한정" : ""}</div></div>
+          <span class="pill ${v.status}">${STATUS_META[v.status].label}</span>
+        </div>
+        <div class="cmp">${rows.join("")}</div>
+      </div>`;
+    }).join("");
 }
 
 // --- 실행 / 저장 ---------------------------------------------------
 
 function runAll() {
   const p = collectProfile();
-  renderTracks(p); renderRef(p); renderScenarios(p); renderNotices(p);
+  renderTracks(p); renderRef(p); renderScenarios(p); renderNotices(p); renderRules(p);
   saveLocal(p);
   showView("v-home");
 }
@@ -473,12 +537,15 @@ window.addEventListener("DOMContentLoaded", () => {
     $$(".chip[data-cat]").forEach(x => x.classList.remove("on")); c.classList.add("on");
     currentCat = c.dataset.cat; renderTracks(collectProfile());
   }));
+  $$(".chip[data-rcat]").forEach(c => c.addEventListener("click", () => {
+    $$(".chip[data-rcat]").forEach(x => x.classList.remove("on")); c.classList.add("on");
+    currentRuleCat = c.dataset.rcat; renderRules(collectProfile());
+  }));
   $("#reloadNotices").addEventListener("click", () => loadNotices(currentRegion));
   $("#runBtn").addEventListener("click", runAll);
   $("#resetBtn").addEventListener("click", () => { localStorage.removeItem("housingMatchProfile"); location.reload(); });
 
-  renderRules();
   const p = collectProfile();
-  renderTracks(p); renderRef(p); renderScenarios(p);
+  renderTracks(p); renderRef(p); renderScenarios(p); renderRules(p);
   loadNotices(currentRegion);
 });
