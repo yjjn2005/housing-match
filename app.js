@@ -297,7 +297,7 @@ function collectProfile() {
 
 // --- 카드 ---------------------------------------------------------
 
-function card({ status, title, tags = [], meta = [], reasons = [], notes = [], link = null }) {
+function card({ status, title, tags = [], meta = [], reasons = [], notes = [], link = null, addr = null }) {
   const m = STATUS_META[status];
   // 불가/조건부/확인필요 사유는 카드 본문에 바로 노출
   const why = (status === "NO" || status === "COND" || status === "CHECK") && reasons.length
@@ -310,6 +310,7 @@ function card({ status, title, tags = [], meta = [], reasons = [], notes = [], l
     <div class="card-head ${hasDetail ? "" : "no-detail"}">
       <div class="info">
         <div class="card-title">${title}</div>
+        ${addr ? `<div class="card-addr">${addr}</div>` : ""}
         <div class="card-meta">${tags.map(t => `<span class="tag">${t}</span>`).join("")}${meta.map(x => `<span>${x}</span>`).join("")}</div>
       </div>
       <span class="pill ${status}">${m.label}</span>
@@ -360,6 +361,7 @@ function renderNotices(p) {
     const no = n.주택관리번호 || n.공고번호;
     return card({
       status: v.status, title: n.단지명, tags: [n.공고구분 || "아파트", n.공급유형],
+      addr: n.주소,
       meta: [n.지역, `${n.공급규모}세대`, `접수 ${n.접수시작}~${n.접수종료}`],
       reasons: v.reasons, notes: v.notes || [], link: n.공고URL
     }).replace('<div class="card-detail">', (n.공고구분 || "아파트") === "아파트" ? `<div class="detail-slot" data-no="${no}"><div class="detail-loading">공고문 자동조회 중…</div></div><div class="card-detail">` : '<div class="card-detail">');
