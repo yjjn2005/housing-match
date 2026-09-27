@@ -35,6 +35,9 @@ function evaluateNotice(notice, profile) {
     if (type.includes("민간임대")) return { status: "CHECK", reasons: ["공공지원민간임대 — 공고별 소득·자산 기준이 달라 공고문 확인 필요"], notes: [] };
     return { status: "OK", reasons: ["청약통장·무주택 요건 없음 — 만 19세 이상 누구나 신청 가능 (특공 판정 대상 아님)"], notes: ["거주지역 제한 없음 · 주택 수 미산입(주거용 오피스텔은 세금 시 주택 간주 가능)"] };
   }
+  if (kind.includes("임의공급") || type.includes("임의공급")) {
+    return { status: "OK", reasons: ["임의공급 — 청약통장·무주택·거주지 요건 없이 만 19세 이상 신청 가능 (선착순/추첨은 공고별)"], notes: ["당첨 시 재당첨 제한 없음 · 분양가·잔여 세대 공고문 확인"] };
+  }
   if (kind.includes("무순위") || type.includes("무순위") || type.includes("재공급")) {
     if (profile.isHomeless) return { status: "OK", reasons: ["무순위·잔여세대 — 청약통장 불필요, 무주택 세대구성원 요건 충족"], notes: ["규제지역은 해당 지역 거주 요건 확인 · 비규제지역은 거주지 무관"] };
     return { status: "COND", reasons: ["유주택자 — 비규제지역 무순위는 신청 가능, 규제지역(강남3구·용산 등)은 무주택 필요"], notes: ["공고문의 규제지역 여부 확인"] };
@@ -234,7 +237,8 @@ let currentRegion = "서울";
 let currentCat = "all";
 let lastNotices = [];
 let newlywedOnly = 0;
-let noticeKind = "apt";
+let noticeKind = "all";
+let noticeMode = "calendar";
 let lastFailed = [];
 
 // --- 탭 전환 ---------------------------------------------------
@@ -325,6 +329,7 @@ function card({ status, title, tags = [], meta = [], reasons = [], notes = [], l
 }
 function bindCards(root) {
   root.querySelectorAll(".card-head").forEach(h => h.addEventListener("click", () => h.closest(".card").classList.toggle("open")));
+  root.querySelectorAll(".cal-item").forEach(h => h.addEventListener("click", () => h.nextElementSibling.classList.toggle("open")));
 }
 
 // --- 공고 ----------------------------------------------------------
@@ -333,7 +338,7 @@ async function loadNotices(region) {
   $("#noticesList").innerHTML = '<div class="loading">청약홈에서 공고를 가져오는 중…</div>';
   $("#homeNotices").innerHTML = '<div class="loading">불러오는 중…</div>';
   try {
-    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}&kind=${noticeKind}`);
+    const r = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}&newlywed=${newlywedOnly}&kind=${noticeKind}&_=${Date.now()}`, { cache: "no-store" });
     if (!r.ok) throw new Error(r.status);
     const data = await r.json();
     lastNotices = data.notices || [];
@@ -369,6 +374,13 @@ function renderNotices(p) {
     }).replace('<div class="card-detail">', (n.공고구분 || "아파트") === "아파트" ? `<div class="detail-slot" data-no="${no}"><div class="detail-loading">공고문 자동조회 중…</div></div><div class="card-detail">` : '<div class="card-detail">');
   });
   const list = $("#noticesList"), home = $("#homeNotices");
+  $("#syncNote").textContent = `청약홈 실시간 · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 갱신`;
+  if (noticeMode === "calendar" && items.length) {
+    list.innerHTML = (lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "") + calendarHTML(items);
+    bindCards(list);
+    home.innerHTML = html.slice(0, 3).join(""); bindCards(home);
+    return;
+  }
   if (!items.length) {
     list.innerHTML = home.innerHTML = '<div class="empty">현재 이 지역에 신혼 관련 공고가 없습니다.</div>';
     return;
@@ -427,6 +439,44 @@ function detailHTML(models, n, p) {
       <thead><tr><th>주택형</th><th>면적</th><th>분양최고가</th><th>신혼</th><th>드림대출</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// --- 접수일정(캘린더) 뷰 ---------------------------------------------
+
+const TAG_CLS = { "특별공급": "t-sp", "1순위": "t-r1", "2순위": "t-r2", "무순위": "t-rm", "임의공": "t-op", "오피스": "t-of", "민간임대": "t-pr" };
+function calendarHTML(items) {
+  const days = {};
+  for (const { n, v } of items) {
+    for (const s of (n.일정 || [])) {
+      if (!s.시작) continue;
+      const end = s.종료 || s.시작;
+      let d = new Date(s.시작), last = new Date(end), guard = 0;
+      while (d <= last && guard++ < 10) {
+        const key = d.toISOString().slice(0, 10);
+        (days[key] = days[key] || []).push({ n, v, tag: s.구분 });
+        d.setDate(d.getDate() + 1);
+      }
+    }
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const keys = Object.keys(days).sort();
+  const W = ["일", "월", "화", "수", "목", "금", "토"];
+  return keys.map(k => {
+    const dt = new Date(k);
+    const label = `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${W[dt.getDay()]})`;
+    const cls = k === today ? "today" : k < today ? "past" : "";
+    const rows = days[k].map(({ n, v, tag }) => `
+      <div class="cal-item status-${v.status}" data-no="${n.공고번호}">
+        <span class="cal-tag ${TAG_CLS[tag] || ""}">${tag}</span>
+        <div class="cal-info"><div class="cal-name">${n.단지명}</div><div class="cal-sub">${n.주소 || n.지역}</div></div>
+        <span class="pill ${v.status}">${STATUS_META[v.status].label}</span>
+      </div>
+      <div class="cal-detail">
+        ${v.reasons.length ? `<ul class="why ${v.status}">${v.reasons.map(r => `<li>${r}</li>`).join("")}</ul>` : ""}
+        <div class="link-bar"><a href="${n.공고URL}" target="_blank" rel="noopener">📄 공고문 원문 보기 (청약홈)</a></div>
+      </div>`).join("");
+    return `<div class="cal-day ${cls}"><div class="cal-head">${label}${k === today ? '<span class="cal-today">오늘</span>' : ""}<span class="cal-cnt">${days[k].length}건</span></div>${rows}</div>`;
+  }).join("") || '<div class="empty">이 기간에 접수 일정이 없습니다.</div>';
 }
 
 // --- 유형별 --------------------------------------------------------
@@ -656,6 +706,11 @@ window.addEventListener("DOMContentLoaded", () => {
     $$(".chip[data-kind]").forEach(x => x.classList.remove("on")); c.classList.add("on");
     noticeKind = c.dataset.kind; loadNotices(currentRegion);
   }));
+  $$(".chip[data-mode]").forEach(c => c.addEventListener("click", () => {
+    $$(".chip[data-mode]").forEach(x => x.classList.remove("on")); c.classList.add("on");
+    noticeMode = c.dataset.mode; renderNotices(collectProfile());
+  }));
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadNotices(currentRegion); });
   $$(".chip[data-nw]").forEach(c => c.addEventListener("click", () => {
     $$(".chip[data-nw]").forEach(x => x.classList.remove("on")); c.classList.add("on");
     newlywedOnly = +c.dataset.nw; loadNotices(currentRegion);

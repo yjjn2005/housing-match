@@ -171,12 +171,19 @@
       <button class="chip" data-region="경기">경기</button>
     </div>
     <div class="chip-row scroll">
-      <button class="chip on" data-kind="apt">아파트</button>
-      <button class="chip" data-kind="officetel">오피스텔·도시형</button>
+      <button class="chip on" data-kind="all">전체</button>
+      <button class="chip" data-kind="apt">아파트</button>
+      <button class="chip" data-kind="opt">임의공급</button>
       <button class="chip" data-kind="remainder">무순위·잔여</button>
-      <button class="chip" data-kind="all">전체</button>
+      <button class="chip" data-kind="officetel">오피스텔·도시형</button>
+      <button class="chip" data-kind="pubrent">공공지원민간임대</button>
       <button class="chip chip-alt" data-nw="1">신혼만</button>
       <button class="chip chip-alt on" data-nw="0">전체 대상</button>
+    </div>
+    <div class="chip-row">
+      <button class="chip on" data-mode="calendar">📅 접수일정순</button>
+      <button class="chip" data-mode="list">목록</button>
+      <span class="chip-note" id="syncNote">청약홈 실시간</span>
     </div>
     <div class="kpi-row compact">
       <div class="kpi ok"><strong id="statOk">0</strong><span>신청가능</span></div>

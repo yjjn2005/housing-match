@@ -257,3 +257,28 @@ code { background: var(--line2); padding: 1px 6px; border-radius: 5px; font-size
 .btn-sm { border: 0; background: var(--p); color: #fff; font-weight: 800; font-size: 13px; padding: 0 14px; border-radius: var(--r3); cursor: pointer; white-space: nowrap; }
 .btn-sm.outline { background: #fff; color: var(--p); border: 1px solid var(--p); }
 .sync-help { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- 접수일정 캘린더 ---------- */
+.cal-day { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 10px; overflow: hidden; box-shadow: var(--sh); }
+.cal-day.past { opacity: .62; }
+.cal-day.today { border-color: var(--p); box-shadow: 0 0 0 2px rgba(29,78,216,.15); }
+.cal-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #F8FAFF; border-bottom: 1px solid var(--line2); font-weight: 800; font-size: 14px; }
+.cal-day.today .cal-head { background: var(--p-soft); color: var(--p2); }
+.cal-today { background: var(--p); color: #fff; font-size: 10.5px; padding: 2px 7px; border-radius: 10px; }
+.cal-cnt { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 600; }
+.cal-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--line2); cursor: pointer; }
+.cal-item:first-of-type { border-top: none; }
+.cal-tag { flex-shrink: 0; min-width: 52px; text-align: center; padding: 5px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1.5px solid; }
+.t-sp { color: #7C3AED; border-color: #C4B5FD; background: #F5F3FF; }
+.t-r1 { color: #fff; background: #3B82F6; border-color: #3B82F6; }
+.t-r2 { color: #fff; background: #22C55E; border-color: #22C55E; }
+.t-rm { color: #8A7A2E; border-color: #D6C98A; background: #FDFBEF; }
+.t-op { color: #C2410C; border-color: #FDBA74; background: #FFF7ED; }
+.t-of { color: #DB2777; border-color: #F9A8D4; background: #FDF2F8; }
+.t-pr { color: #0E7490; border-color: #67E8F9; background: #ECFEFF; }
+.cal-info { flex: 1; min-width: 0; }
+.cal-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-detail { max-height: 0; overflow: hidden; transition: max-height .22s ease; background: #FAFBFC; }
+.cal-detail.open { max-height: 500px; border-top: 1px solid var(--line2); }
+.cal-detail .why { padding-top: 10px; }
