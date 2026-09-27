@@ -3,221 +3,225 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="신혼부부 중심 전국 청약·임대 자격 자동판정 및 서울·경기 신규 공고 알림">
-<title>내집자격 | 청약·임대 통합진단</title>
+<meta name="theme-color" content="#1D4ED8">
+<title>내집자격 — 청약·임대 자격판정</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar">
-  <a class="brand" href="#top">
-    <span class="brand-mark">집</span>
-    <span>내집자격</span>
-  </a>
-  <nav aria-label="주요 메뉴">
-    <button class="nav-link active" data-view="dashboard">대시보드</button>
-    <button class="nav-link" data-view="tracks">유형별 판정</button>
-    <button class="nav-link" data-view="rules">전체 자격조건</button>
-  </nav>
-  <span class="sync"><i></i> 2026년 기준</span>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand"><span class="brand-mark">집</span><span>내집자격</span></div>
+    <span class="appbar-meta">2026 기준</span>
+  </div>
 </header>
 
-<main id="top">
+<main class="screen">
 
-  <!-- ===================== 대시보드 ===================== -->
-  <section id="dashboard" class="view active-view">
-    <div class="intro">
-      <div>
-        <p class="eyebrow">신혼부부 · 예비신혼 · 출산가구</p>
-        <h1>공고가 뜨면, 내 조건으로<br><em>바로 가능여부를 확인합니다.</em></h1>
-        <p class="lede">왼쪽에 조건을 입력하면 오른쪽에 서울·경기 최근 공고가 판정되어 나타납니다. 신청이 불가능하면 정확한 이유를 함께 표시합니다.</p>
+  <!-- ================= 홈 ================= -->
+  <section class="view active" id="v-home">
+    <div class="hero">
+      <div class="hero-text">
+        <p class="hero-kicker">신혼부부 · 예비신혼 · 출산가구</p>
+        <h1 id="heroTitle">조건을 입력하고<br>진단을 시작하세요</h1>
+        <p id="heroSub" class="hero-sub">9개 주택 트랙과 서울·경기 최신 공고를 내 조건으로 판정합니다.</p>
       </div>
-      <div class="stat-grid">
-        <div><strong id="statOk">0</strong><span>신청가능 공고</span></div>
-        <div><strong id="statNo">0</strong><span>신청곤란 공고</span></div>
-        <div><strong>실시간</strong><span>청약홈 연동</span></div>
+      <div class="ring-wrap">
+        <div class="ring" id="scoreRing"><div class="ring-inner"><strong id="matchScore">0</strong><span>적합도</span></div></div>
       </div>
     </div>
 
-    <div class="workspace">
-      <aside class="profile-panel">
-        <div class="panel-head">
-          <div><span class="step">01</span><h2>나의 조건</h2></div>
-          <button id="resetBtn" class="text-btn" type="button">초기화</button>
-        </div>
+    <div class="kpi-row">
+      <div class="kpi ok"><strong id="kpiOk">0</strong><span>신청가능 트랙</span></div>
+      <div class="kpi cond"><strong id="kpiCond">0</strong><span>조건부</span></div>
+      <div class="kpi no"><strong id="kpiNo">0</strong><span>신청곤란</span></div>
+    </div>
 
-        <fieldset>
-          <legend>가구·혼인</legend>
+    <div class="section-head">
+      <h2>최근 공고 <span class="muted" id="homeRegionLabel">서울</span></h2>
+      <button class="link-btn" data-goto="v-notices">전체보기 →</button>
+    </div>
+    <div id="homeNotices" class="card-list"></div>
+
+    <div class="section-head">
+      <h2>빠른 이동</h2>
+    </div>
+    <div class="quick-grid">
+      <button class="quick" data-goto="v-profile"><span class="q-ico">✎</span><b>내 조건</b><small>입력·수정</small></button>
+      <button class="quick" data-goto="v-tracks"><span class="q-ico">▦</span><b>유형별 판정</b><small>9개 트랙</small></button>
+      <button class="quick" data-goto="v-rules"><span class="q-ico">☰</span><b>자격 기준표</b><small>소득·자산 상한</small></button>
+    </div>
+  </section>
+
+  <!-- ================= 내 조건 ================= -->
+  <section class="view" id="v-profile">
+    <div class="page-head">
+      <h1>내 조건</h1>
+      <button class="link-btn" id="resetBtn">초기화</button>
+    </div>
+
+    <details class="acc" open>
+      <summary><span class="acc-num">1</span>가구·혼인<span class="acc-chev"></span></summary>
+      <div class="acc-body">
+        <div class="fld">
+          <label class="fld-label">혼인 상태</label>
+          <div class="seg" id="maritalSeg">
+            <button data-val="single">미혼</button>
+            <button data-val="engaged">예비신혼</button>
+            <button data-val="married" class="on">기혼</button>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label class="fld-label">혼인기간 <em>년</em></label><input type="number" id="marriageYears" value="0" min="0"></div>
+          <div class="fld"><label class="fld-label">가구원 수</label><input type="number" id="householdSize" value="2" min="1" max="10"></div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label class="fld-label">만 나이</label><input type="number" id="applicantAge" value="28" min="19" max="99"></div>
           <div class="fld">
-            <span class="fld-label">혼인 상태</span>
-            <div class="segmented" id="maritalSeg" role="group">
-              <button type="button" data-val="single">미혼</button>
-              <button type="button" data-val="engaged">예비신혼</button>
-              <button type="button" data-val="married" class="active">기혼</button>
+            <label class="fld-label">희망 지역</label>
+            <div class="seg" id="regionSeg">
+              <button data-val="서울" class="on">서울</button>
+              <button data-val="경기">경기</button>
+              <button data-val="기타">기타</button>
             </div>
-          </div>
-          <div class="two-col">
-            <label>혼인기간 <span class="unit">년</span><input type="number" id="marriageYears" value="0" min="0"></label>
-            <label>가구원 수<input type="number" id="householdSize" value="2" min="1" max="10"></label>
-          </div>
-          <div class="two-col">
-            <label>만 나이<input type="number" id="applicantAge" value="28" min="19" max="99"></label>
-            <div class="fld">
-              <span class="fld-label">희망 지역</span>
-              <div class="segmented" id="regionSeg" role="group">
-                <button type="button" data-val="서울" class="active">서울</button>
-                <button type="button" data-val="경기">경기</button>
-                <button type="button" data-val="기타">기타</button>
-              </div>
-            </div>
-          </div>
-          <label class="check"><input type="checkbox" id="hasChildUnder6"><span>만 6세 이하 자녀 있음</span></label>
-          <label class="check"><input type="checkbox" id="newbornWithin2y"><span>2년 내 출산</span></label>
-        </fieldset>
-
-        <fieldset>
-          <legend>소득·자산</legend>
-          <label class="check"><input type="checkbox" id="isDualIncome"><span>부부 모두 소득이 있음 (맞벌이)</span></label>
-          <label>세대 월소득 <span class="unit">원</span><input type="text" inputmode="numeric" id="monthlyIncome" value="5,000,000"></label>
-          <div class="two-col">
-            <label>총자산 <span class="unit">원</span><input type="text" inputmode="numeric" id="totalAsset" value="200,000,000"></label>
-            <label>자동차가액 <span class="unit">원</span><input type="text" inputmode="numeric" id="vehicleAsset" value="20,000,000"></label>
-          </div>
-          <label>과거 특별공급 당첨 <span class="unit">회</span><input type="number" id="spUsedCount" value="0" min="0"></label>
-        </fieldset>
-
-        <fieldset>
-          <legend>주택 소유</legend>
-          <label class="check"><input type="checkbox" id="isHomeless" checked><span>세대원 전원 무주택</span></label>
-          <label class="check"><input type="checkbox" id="hasSmallCheapHouse"><span>소형·저가주택 1채 보유 (민영 특례)</span></label>
-          <div id="smallHouseDetails" class="sub-box" style="display:none">
-            <div class="fld">
-              <span class="fld-label">보유주택 유형</span>
-              <div class="segmented" id="smallHouseTypeSeg" role="group">
-                <button type="button" data-val="apartment" class="active">아파트</button>
-                <button type="button" data-val="nonApartment">비아파트</button>
-              </div>
-            </div>
-            <div class="two-col">
-              <label>전용면적 <span class="unit">㎡</span><input type="number" id="smallHouseArea" value="59" min="0"></label>
-              <label>공시가격 <span class="unit">원</span><input type="text" inputmode="numeric" id="smallHousePrice" value="90,000,000"></label>
-            </div>
-            <label class="check"><input type="checkbox" id="smallHouseMetro" checked><span>수도권 소재</span></label>
-          </div>
-          <label class="check"><input type="checkbox" id="propertyDisposed"><span>보유주택 처분 완료</span></label>
-        </fieldset>
-
-        <fieldset>
-          <legend>청약통장·관심 단지 <span class="opt">(선택)</span></legend>
-          <div class="two-col">
-            <label>본인 통장 가입 <span class="unit">개월</span><input type="number" id="bankMonths" value="24" min="0"></label>
-            <label>배우자 통장 가입 <span class="unit">개월</span><input type="number" id="spouseBankMonths" value="0" min="0"></label>
-          </div>
-          <div class="two-col">
-            <label>관심 분양가 <span class="unit">원</span><input type="text" inputmode="numeric" id="interestedPrice" value="" placeholder="550,000,000"></label>
-            <label>관심 전용면적 <span class="unit">㎡</span><input type="number" id="interestedArea" value="" placeholder="84" min="0"></label>
-          </div>
-        </fieldset>
-
-        <button class="primary" id="runBtn" type="button">내 조건으로 진단하기</button>
-      </aside>
-
-      <section class="results-panel" id="resultsPanel">
-        <div class="results-top">
-          <div><span class="step">02</span><h2>최근 공고 자격판정</h2></div>
-          <div class="tabs" role="tablist">
-            <button class="ntab active" data-region="서울" type="button">서울</button>
-            <button class="ntab" data-region="경기" type="button">경기</button>
-            <button class="text-btn" id="reloadNotices" type="button">새로고침</button>
           </div>
         </div>
+        <label class="sw"><span>만 6세 이하 자녀 있음</span><input type="checkbox" id="hasChildUnder6"><i></i></label>
+        <label class="sw"><span>2년 내 출산</span><input type="checkbox" id="newbornWithin2y"><i></i></label>
+      </div>
+    </details>
 
-        <div class="summary-card">
-          <div class="score-ring" id="scoreRing"><strong id="matchScore">0</strong><span>적합도</span></div>
-          <div>
-            <p class="summary-kicker">내 조건 종합 진단</p>
-            <h3 id="summaryTitle">조건을 입력하고 진단을 실행하세요</h3>
-            <p id="summaryText">9개 트랙 중 신청가능한 트랙 비율로 적합도를 계산합니다.</p>
-          </div>
+    <details class="acc" open>
+      <summary><span class="acc-num">2</span>소득·자산<span class="acc-chev"></span></summary>
+      <div class="acc-body">
+        <label class="sw"><span>맞벌이 (부부 모두 소득)</span><input type="checkbox" id="isDualIncome"><i></i></label>
+        <div class="fld"><label class="fld-label">세대 월소득 <em>원</em></label><input type="text" inputmode="numeric" id="monthlyIncome" value="5,000,000"></div>
+        <div class="row2">
+          <div class="fld"><label class="fld-label">총자산 <em>원</em></label><input type="text" inputmode="numeric" id="totalAsset" value="200,000,000"></div>
+          <div class="fld"><label class="fld-label">자동차가액 <em>원</em></label><input type="text" inputmode="numeric" id="vehicleAsset" value="20,000,000"></div>
         </div>
+        <div class="fld"><label class="fld-label">과거 특별공급 당첨 <em>회</em></label><input type="number" id="spUsedCount" value="0" min="0"></div>
+      </div>
+    </details>
 
-        <div id="noticesList" class="notice-list"></div>
+    <details class="acc" open>
+      <summary><span class="acc-num">3</span>주택 소유<span class="acc-chev"></span></summary>
+      <div class="acc-body">
+        <label class="sw"><span>세대원 전원 무주택</span><input type="checkbox" id="isHomeless" checked><i></i></label>
+        <label class="sw"><span>소형·저가주택 1채 보유 <small>민영 특례</small></span><input type="checkbox" id="hasSmallCheapHouse"><i></i></label>
+        <div id="smallHouseDetails" class="sub" hidden>
+          <div class="fld">
+            <label class="fld-label">보유주택 유형</label>
+            <div class="seg" id="smallHouseTypeSeg">
+              <button data-val="apartment" class="on">아파트</button>
+              <button data-val="nonApartment">비아파트</button>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="fld"><label class="fld-label">전용면적 <em>㎡</em></label><input type="number" id="smallHouseArea" value="59" min="0"></div>
+            <div class="fld"><label class="fld-label">공시가격 <em>원</em></label><input type="text" inputmode="numeric" id="smallHousePrice" value="90,000,000"></div>
+          </div>
+          <label class="sw"><span>수도권 소재</span><input type="checkbox" id="smallHouseMetro" checked><i></i></label>
+        </div>
+        <label class="sw"><span>보유주택 처분 완료</span><input type="checkbox" id="propertyDisposed"><i></i></label>
+      </div>
+    </details>
 
-        <p class="legal-note"><b>본 결과는 모의 판정치입니다.</b> 신청 전 반드시 한국부동산원 청약홈 또는 LH청약플러스 원본 공고문에서 최종 자격을 확인하세요.</p>
-      </section>
-    </div>
+    <details class="acc">
+      <summary><span class="acc-num">4</span>청약통장·관심 단지 <small>선택</small><span class="acc-chev"></span></summary>
+      <div class="acc-body">
+        <div class="row2">
+          <div class="fld"><label class="fld-label">본인 통장 <em>개월</em></label><input type="number" id="bankMonths" value="24" min="0"></div>
+          <div class="fld"><label class="fld-label">배우자 통장 <em>개월</em></label><input type="number" id="spouseBankMonths" value="0" min="0"></div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label class="fld-label">관심 분양가 <em>원</em></label><input type="text" inputmode="numeric" id="interestedPrice" placeholder="550,000,000"></div>
+          <div class="fld"><label class="fld-label">관심 전용면적 <em>㎡</em></label><input type="number" id="interestedArea" placeholder="84" min="0"></div>
+        </div>
+      </div>
+    </details>
+
+    <div class="cta-spacer"></div>
   </section>
 
-  <!-- ===================== 유형별 판정 ===================== -->
-  <section id="tracks" class="view content-view">
-    <div class="section-title">
-      <p class="eyebrow">분양 · 공공임대 · 장기전세</p>
-      <h1>유형별 자격 판정</h1>
-      <p>대시보드에서 입력한 조건으로 9개 주택 트랙을 각각 판정합니다. 카드를 누르면 판정 근거가 펼쳐집니다.</p>
+  <!-- ================= 공고 ================= -->
+  <section class="view" id="v-notices">
+    <div class="page-head">
+      <h1>최근 공고</h1>
+      <button class="link-btn" id="reloadNotices">새로고침</button>
     </div>
-    <div class="content-wrap">
-      <div class="summary-strip" id="summaryStrip"></div>
-      <div class="toolbar">
-        <div class="tabs" role="tablist">
-          <button class="tab active" data-cat="all" type="button">전체</button>
-          <button class="tab" data-cat="분양" type="button">분양</button>
-          <button class="tab" data-cat="임대" type="button">임대</button>
-        </div>
-      </div>
-      <div id="results"></div>
-
-      <h3 class="sub-title">참고 정보</h3>
-      <div class="ref-panel">
-        <div id="bankScoreCard" class="ref-item"></div>
-        <div id="youthLoanCard" class="ref-item"></div>
-      </div>
-
-      <h3 class="sub-title">혼인신고 전 · 후 · 출산 후 비교</h3>
-      <div class="scenario-scroll" id="scenarioScroll"></div>
+    <div class="chip-row">
+      <button class="chip on" data-region="서울">서울</button>
+      <button class="chip" data-region="경기">경기</button>
+      <span class="chip-note">청약홈 실시간</span>
     </div>
+    <div class="kpi-row compact">
+      <div class="kpi ok"><strong id="statOk">0</strong><span>신청가능</span></div>
+      <div class="kpi no"><strong id="statNo">0</strong><span>신청곤란</span></div>
+      <div class="kpi check"><strong id="statCheck">0</strong><span>확인필요</span></div>
+    </div>
+    <div id="noticesList" class="card-list"></div>
+    <p class="legal">본 결과는 모의 판정치입니다. 신청 전 반드시 청약홈·LH청약플러스 원본 공고문에서 최종 확인하세요.</p>
   </section>
 
-  <!-- ===================== 전체 자격조건 ===================== -->
-  <section id="rules" class="view content-view">
-    <div class="section-title">
-      <p class="eyebrow">2026년 고시 기준 · 코드로 관리되는 단일 기준표</p>
-      <h1>전체 자격조건</h1>
-      <p>트랙별 소득·자산·혼인 요건을 한 표로 정리했습니다. 수치는 <code>data.js</code>에서 관리되어 매년 갱신 시 이 표도 자동 반영됩니다.</p>
+  <!-- ================= 유형별 ================= -->
+  <section class="view" id="v-tracks">
+    <div class="page-head"><h1>유형별 판정</h1></div>
+    <div class="chip-row">
+      <button class="chip on" data-cat="all">전체</button>
+      <button class="chip" data-cat="분양">분양</button>
+      <button class="chip" data-cat="임대">임대</button>
     </div>
-    <div class="content-wrap">
-      <div class="table-wrap">
-        <table class="cond-table" id="condTable"></table>
-      </div>
+    <div id="results" class="card-list"></div>
 
-      <h3 class="sub-title">공통 판정 원칙</h3>
-      <div class="rule-grid">
-        <article><span>01</span><h2>혼인기간</h2><p>혼인신고일로부터 7년 이내. 예비신혼부부는 민영 특공 제외, 공공 트랙만 개방. 7년 초과라도 만 6세 이하 자녀 보유 시 공공임대 신혼 계층 유지.</p></article>
-        <article><span>02</span><h2>소득기준</h2><p>전년도 도시근로자 가구원수별 월평균소득 대비 배수(70~200%)를 트랙·외벌이/맞벌이·우선/일반/추첨 구간별로 적용.</p></article>
-        <article><span>03</span><h2>무주택·자산</h2><p>세대원 전원 무주택. 소형·저가주택 특례는 민영 한정(아파트 60㎡·비아파트 85㎡). 자동차 4,542만원, 트랙별 총자산 상한 적용.</p></article>
-        <article><span>04</span><h2>특공 1회 원칙</h2><p>특별공급 생애 1회. 기당첨 후 무주택 전환+2년 내 출산 시 1회 재개방. 부부 중복청약은 선접수 1건만 유효.</p></article>
-        <article><span>05</span><h2>통장·대출</h2><p>민영 일반공급 가점은 본인 점수 + 배우자 50% 가산(최대 3점, 17점 상한). 청년 주택드림 대출은 39세·연소득·분양가 6억·85㎡ 조건.</p></article>
-        <article><span>06</span><h2>지역 한정</h2><p>미리내집(장기전세Ⅱ)은 서울 거주자 한정. 청약홈 공고는 희망지역 코드로 필터링해 표시.</p></article>
-      </div>
+    <div class="section-head"><h2>참고 정보</h2></div>
+    <div class="info-grid">
+      <div class="info-card" id="bankScoreCard"></div>
+      <div class="info-card" id="youthLoanCard"></div>
+    </div>
 
-      <div class="logic-table">
-        <div class="logic-head"><h2>판정 결과의 의미</h2><p>자격 충족과 당첨 가능성은 별개입니다.</p></div>
-        <div class="logic-row"><b class="ok">신청 가능</b><span>모든 필수조건(혼인·무주택·자산·소득) 충족</span></div>
-        <div class="logic-row"><b class="conditional">조건부 가능</b><span>예비신혼 등 혼인신고 시점에 따라 확정되는 경우</span></div>
-        <div class="logic-row"><b class="check-status">확인 필요</b><span>공급유형이 자동판정 트랙과 매치되지 않아 공고문 직접 확인 필요</span></div>
-        <div class="logic-row"><b class="no">신청 곤란</b><span>필수 자격조건 중 하나 이상 불충족 — 사유 표시</span></div>
-      </div>
+    <div class="section-head"><h2>혼인신고 전·후·출산 후 비교</h2></div>
+    <div class="scenario-scroll" id="scenarioScroll"></div>
+  </section>
 
-      <div class="source-flow">
-        <div><strong>청약홈</strong><span>민영·국민·신혼희망타운</span></div><i>+</i>
-        <div><strong>LH 청약플러스</strong><span>공공분양·공공임대 (연동 예정)</span></div><i>+</i>
-        <div><strong>마이홈</strong><span>전국 공공주택 (연동 예정)</span></div><i>→</i>
-        <div class="final"><strong>내집자격</strong><span>자격판정·공고알림</span></div>
-      </div>
+  <!-- ================= 기준표 ================= -->
+  <section class="view" id="v-rules">
+    <div class="page-head"><h1>전체 자격조건</h1></div>
+    <p class="page-sub">2026년 고시 기준. 수치는 <code>data.js</code>에서 관리되어 개정 시 자동 반영됩니다.</p>
+
+    <div class="section-head"><h2>트랙별 기준</h2></div>
+    <div id="rulesCards" class="card-list"></div>
+
+    <div class="section-head"><h2>공통 판정 원칙</h2></div>
+    <div class="principle-list">
+      <div class="principle"><b>혼인기간</b>혼인신고일로부터 7년 이내. 예비신혼은 민영 특공 제외·공공 트랙만 개방. 7년 초과라도 만 6세 이하 자녀 보유 시 공공임대 신혼 계층 유지.</div>
+      <div class="principle"><b>소득기준</b>도시근로자 가구원수별 월평균소득 대비 70~200%를 트랙·외벌이/맞벌이·우선/일반/추첨 구간별로 적용.</div>
+      <div class="principle"><b>무주택·자산</b>세대원 전원 무주택. 소형·저가주택 특례는 민영 한정(아파트 60㎡·비아파트 85㎡). 자동차 4,542만원, 트랙별 총자산 상한.</div>
+      <div class="principle"><b>특공 1회</b>생애 1회 원칙. 기당첨 후 무주택 전환+2년 내 출산 시 1회 재개방. 부부 중복청약은 선접수 1건만 유효.</div>
+      <div class="principle"><b>통장·대출</b>민영 일반공급 가점 = 본인 + 배우자 50% 가산(최대 3점, 17점 상한). 청년 주택드림 대출은 39세·연소득·분양가 6억·85㎡.</div>
+      <div class="principle"><b>지역 한정</b>미리내집(장기전세Ⅱ)은 서울 거주자 한정.</div>
+    </div>
+
+    <div class="section-head"><h2>판정 결과의 의미</h2></div>
+    <div class="legend">
+      <div><span class="pill OK">신청가능</span>모든 필수조건 충족</div>
+      <div><span class="pill COND">조건부</span>혼인신고 시점 등에 따라 확정</div>
+      <div><span class="pill CHECK">확인필요</span>자동판정 트랙과 미매치 — 공고문 확인</div>
+      <div><span class="pill NO">신청곤란</span>필수조건 불충족 — 사유 표시</div>
     </div>
   </section>
 
 </main>
 
-<footer>내집자격 · housing-match · 유앤김패밀리</footer>
+<div class="cta" id="ctaBar"><button id="runBtn" class="btn-primary">내 조건으로 진단하기</button></div>
+
+<nav class="tabbar">
+  <button class="tb on" data-view="v-home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>홈</span></button>
+  <button class="tb" data-view="v-profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>내 조건</span></button>
+  <button class="tb" data-view="v-notices"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>공고</span></button>
+  <button class="tb" data-view="v-tracks"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg><span>유형별</span></button>
+  <button class="tb" data-view="v-rules"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>기준표</span></button>
+</nav>
 
 <script src="data.js"></script>
 <script src="app.js"></script>
