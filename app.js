@@ -18,6 +18,28 @@ const ICONS = {
 };
 const CHEVRON = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>';
 
+// --- 공고 공급유형 → 자격판정 트랙 매핑 ---------------------------
+
+function mapNoticeToTrackId(houseSecdNm) {
+  if (!houseSecdNm) return null;
+  if (houseSecdNm.includes("신혼희망타운")) return "sinhonhuimang";
+  if (houseSecdNm.includes("국민")) return "newhome_sf";
+  if (houseSecdNm.includes("민영")) return "private_sf";
+  return null;
+}
+
+function evaluateNotice(notice, profile) {
+  const trackId = mapNoticeToTrackId(notice.공급유형);
+  const track = trackId ? TRACKS.find(t => t.id === trackId) : null;
+  if (!track) {
+    return {
+      status: "CHECK",
+      reasons: [`공급유형 "${notice.공급유형}"은 자동판정 트랙과 매치되지 않습니다 — 공고문에서 신혼부부 특공 물량·조건을 직접 확인하세요.`]
+    };
+  }
+  return evaluateTrack(track, profile);
+}
+
 // --- 금액 입력 콤마 포맷팅 ---------------------------------------
 
 function parseAmount(str) {
@@ -259,27 +281,44 @@ function renderScenarioCompare(baseProfile) {
 
 // --- 신규 공고 조회 ---------------------------------------------
 
-async function loadNotices(region) {
+async function loadNotices(profile) {
   const list = document.getElementById("noticesList");
   list.innerHTML = '<div class="notice-loading">공고 조회 중…</div>';
   try {
-    const res = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(region)}`);
+    const res = await fetch(`${API_BASE}/notices?region=${encodeURIComponent(profile.region)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.notices || data.notices.length === 0) {
       list.innerHTML = '<div class="notice-empty">현재 조건에 맞는 신혼 관련 공고가 없습니다.</div>';
       return;
     }
-    list.innerHTML = data.notices.map(n => `
-      <a class="notice-item" href="${n.공고URL}" target="_blank" rel="noopener">
-        <div class="n-title">${n.단지명}</div>
-        <div class="n-meta">
-          <span class="n-tag">${n.공급유형}</span>
-          <span>${n.지역} · ${n.공급규모}세대</span>
-          <span>접수 ${n.접수시작}~${n.접수종료}</span>
+    list.innerHTML = data.notices.map((n, idx) => {
+      const verdict = evaluateNotice(n, profile);
+      const meta = STATUS_META[verdict.status];
+      return `
+      <div class="track-card status-${verdict.status}">
+        <div class="track-head" data-notice-idx="${idx}">
+          <div class="status-icon status-${verdict.status}">${ICONS[verdict.status]}</div>
+          <div class="info">
+            <div class="track-name">${n.단지명}</div>
+            <div class="track-meta">${n.지역} · ${n.공급유형} · <span class="track-badge-label">${meta.label}</span></div>
+          </div>
+          ${CHEVRON}
         </div>
-      </a>
-    `).join("");
+        <div class="track-detail">
+          <ul>
+            ${verdict.reasons.map(r => `<li>${r}</li>`).join("")}
+            <li>공급규모 ${n.공급규모}세대 · 접수 ${n.접수시작}~${n.접수종료} · 당첨발표 ${n.당첨자발표일}</li>
+          </ul>
+          <div style="padding:0 14px 12px 40px;">
+            <a href="${n.공고URL}" target="_blank" rel="noopener" style="font-size:12.5px; color:var(--navy); font-weight:600;">공고 원문 보기 →</a>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    list.querySelectorAll(".track-head").forEach(head => {
+      head.addEventListener("click", () => head.closest(".track-card").classList.toggle("open"));
+    });
   } catch (e) {
     list.innerHTML = `<div class="notice-error">공고 조회 실패 — 잠시 후 다시 시도해주세요.</div>`;
   }
@@ -290,7 +329,7 @@ function runAll() {
   renderResults(profile);
   renderScenarioCompare(profile);
   saveLocal(profile);
-  loadNotices(profile.region);
+  loadNotices(profile);
   document.getElementById("resultsPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -333,7 +372,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const profile = collectProfile();
   renderResults(profile);
   renderScenarioCompare(profile);
-  loadNotices(profile.region);
+  loadNotices(profile);
   const first = document.querySelector(".track-card");
   if (first) first.classList.add("open");
 });
