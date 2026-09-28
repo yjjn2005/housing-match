@@ -157,3 +157,17 @@ const TRACKS = [
   T({ id: "general_priv", name: "민영주택 일반공급 (가점·추첨)", category: "분양", supplyKind: "private", target: "일반",
       smallCheapHouseException: true, note: "소득·자산 제한 없음 · 청약통장 예치금·가점(84점) 적용" })
 ];
+
+
+// ============================================================
+// 분양 예정 (청약홈 모집공고 게시 전) — 언론 보도 기반 수동 등록
+// keywords: 청약홈 공고 단지명에 포함되면 자동 매칭
+// ============================================================
+const UPCOMING = [
+  { id: "sinbanpo22", name: "신반포22차 재건축", keywords: ["신반포22", "신반포 22"], region: "서울", gu: "서초구",
+    total: 160, sale: 28, supplyKind: "private", month: "2026-10",
+    note: "재건축 일반분양 28세대 · 민영", source: "신문 2026-09-28 「추석후 청약 큰장」" },
+  { id: "godeok3", name: "고덕강일3단지", keywords: ["고덕강일3", "고덕강일 3", "고덕강일 3단지"], region: "서울", gu: "강동구",
+    total: 1305, sale: 1305, supplyKind: "public", month: "2026-10",
+    note: "SH 공공분양(뉴:홈) 1,305세대 전량 분양", source: "신문 2026-09-28 「추석후 청약 큰장」" }
+];

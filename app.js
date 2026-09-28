@@ -375,18 +375,20 @@ function renderNotices(p) {
   });
   const list = $("#noticesList"), home = $("#homeNotices");
   $("#syncNote").textContent = `청약홈 실시간 · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 갱신`;
-  if (noticeMode === "calendar" && items.length) {
-    list.innerHTML = (lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "") + calendarHTML(items);
+  const up = upcomingHTML(p);
+  if (noticeMode === "calendar") {
+    list.innerHTML = (lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "") + up + calendarHTML(items);
     bindCards(list);
     home.innerHTML = html.slice(0, 3).join(""); bindCards(home);
     return;
   }
   if (!items.length) {
-    list.innerHTML = home.innerHTML = '<div class="empty">현재 진행 가능한 공고가 없습니다.</div>';
+    list.innerHTML = up + '<div class="empty">현재 진행 가능한 공고가 없습니다.</div>';
+    home.innerHTML = '<div class="empty">현재 진행 가능한 공고가 없습니다.</div>';
     return;
   }
   const warn = lastFailed.length ? `<div class="warn">⚠ ${lastFailed.join("·")} 조회 실패 — 새로고침해 주세요</div>` : "";
-  list.innerHTML = warn + html.join(""); bindCards(list);
+  list.innerHTML = warn + up + html.join(""); bindCards(list);
   home.innerHTML = html.slice(0, 3).join(""); bindCards(home);
   loadNoticeDetails(items, p);
 }
@@ -439,6 +441,35 @@ function detailHTML(models, n, p) {
       <thead><tr><th>주택형</th><th>면적</th><th>분양최고가</th><th>신혼</th><th>드림대출</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// --- 분양 예정(공고 전) -----------------------------------------------
+
+function upcomingHTML(p) {
+  const items = UPCOMING.filter(u => u.region === currentRegion);
+  if (!items.length) return "";
+  const rows = items.map(u => {
+    const posted = lastNotices.find(n => u.keywords.some(k => (n.단지명 || "").replace(/\s/g, "").includes(k.replace(/\s/g, ""))));
+    const cands = orderTracks(TRACKS.filter(t => t.supplyKind === u.supplyKind && t.category === "분양"));
+    const evals = cands.map(t => ({ t, r: evaluateTrack(t, p) }));
+    const ok = evals.filter(x => x.r.status === "OK").map(x => x.t.name.replace(/\s*\(.*?\)/g, ""));
+    const status = ok.length ? "OK" : evals.some(x => x.r.status === "COND") ? "COND" : "NO";
+    const why = ok.length ? `예상 신청가능: ${ok.join(", ")}` : (evals.sort((a, b) => a.r.reasons.length - b.r.reasons.length)[0]?.r.reasons[0] || "");
+    return `
+    <div class="card status-${status} upcoming">
+      <div class="card-head no-detail">
+        <div class="info">
+          <div class="card-title">${u.name}</div>
+          <div class="card-addr">${u.region} ${u.gu}</div>
+          <div class="card-meta"><span class="tag">${posted ? "공고 게시됨" : "공고 전 · " + u.month.replace("-", ".") + " 예정"}</span><span>${u.supplyKind === "public" ? "공공" : "민영"}</span><span>총 ${u.total.toLocaleString()}세대 · 분양 ${u.sale.toLocaleString()}</span></div>
+        </div>
+        <span class="pill ${status}">${posted ? STATUS_META[status].label : "예상 " + STATUS_META[status].label}</span>
+      </div>
+      <div class="why-ok" style="color:${status === "NO" ? "var(--no)" : status === "COND" ? "var(--cond)" : "var(--ok)"}">${why}</div>
+      <div class="up-foot">${u.note} · 출처: ${u.source}${posted ? ` · <a href="${posted.공고URL}" target="_blank" rel="noopener">청약홈 공고 보기 →</a>` : ""}</div>
+    </div>`;
+  }).join("");
+  return `<div class="section-head" style="margin-top:4px"><h2>🔜 분양 예정 <span class="muted">청약홈 공고 전</span></h2></div>${rows}<div class="section-head"><h2>📅 접수 일정</h2></div>`;
 }
 
 // --- 접수일정(캘린더) 뷰 ---------------------------------------------

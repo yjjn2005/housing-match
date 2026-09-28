@@ -282,3 +282,7 @@ code { background: var(--line2); padding: 1px 6px; border-radius: 5px; font-size
 .cal-detail { max-height: 0; overflow: hidden; transition: max-height .22s ease; background: #FAFBFC; }
 .cal-detail.open { max-height: 500px; border-top: 1px solid var(--line2); }
 .cal-detail .why { padding-top: 10px; }
+
+.card.upcoming { border-style: dashed; }
+.up-foot { padding: 0 18px 12px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.up-foot a { color: var(--p); font-weight: 700; text-decoration: none; }
